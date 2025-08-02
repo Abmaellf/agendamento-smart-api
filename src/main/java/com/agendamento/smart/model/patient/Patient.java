@@ -1,26 +1,58 @@
+
 package com.agendamento.smart.model.patient;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDate;
-import java.util.UUID;
+import java.util.Random;
 
 @Table(name="PATIENT")
 @Entity
 @Getter
-@NoArgsConstructor
+@Setter
 @AllArgsConstructor
+//@NoArgsConstructor
 @EqualsAndHashCode(of = "id")
 public class Patient {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
+    private final Random code;
     private String name;
-    private String role;
-    private LocalDate createdAt;
+    private LocalDate createdAt = LocalDate.now();
+
+    public Patient() {
+        this.code = new Random();
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public int getCode() {
+        return code.nextInt(0,999999999);
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public LocalDate getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDate createdAt) {
+        this.createdAt = createdAt;
+    }
+
 }
