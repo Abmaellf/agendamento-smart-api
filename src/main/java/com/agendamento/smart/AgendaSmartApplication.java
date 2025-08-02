@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController
 @SpringBootApplication
 public class AgendaSmartApplication {
 
@@ -17,10 +16,8 @@ public class AgendaSmartApplication {
 	}
 	
 //	@RequestMapping("/list") ou
-	@GetMapping("/")
-	public String ListMenssage() {
-		return "Ola Mundo";
-		
-	}
-
+//	@GetMapping("/hello")
+//	public String ListMenssage() {
+//		return "Ola Mundo";
+//	}
 }

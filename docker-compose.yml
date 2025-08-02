@@ -1,10 +1,17 @@
+version: '3.8' # Specify the Docker Compose file format version
 services:
-  postgres:
-    image: postgres
-    volumes:
-      - ./home/abmael/postgres:/var/lib/postgresql/data
-    
+  db: # Define a service named 'db' for MySQL
+    image: mysql:8.0 # Use the official MySQL 8.0 image from Docker Hub
+    container_name: my-mysql-db # Assign a custom name to the container
+    restart: always # Ensure the container restarts automatically if it stops
     environment:
-      POSTGRES_PASSWORD: "1234"
+      MYSQL_ROOT_PASSWORD: 148625 # Set the root password for MySQL
+      MYSQL_DATABASE: agendamento-smart-api # (Optional) Create a default database
+      MYSQL_USER: abmael # (Optional) Create a new user
+      MYSQL_PASSWORD: 148625 # (Optional) Set password for the new user
     ports:
-      - "5432:5432"
+      - "3306:3306" # Map host port 3306 to container port 3306
+    volumes:
+      - db_data:/var/lib/mysql # Mount a named volume for data persistence
+volumes:
+  db_data: # Define the named volume for data persistence

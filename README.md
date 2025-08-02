@@ -12,7 +12,7 @@
 ![Git](https://img.shields.io/badge/git-%23F05033.svg?style=for-the-badge&logo=git&logoColor=white)
 ![GitHub](https://img.shields.io/badge/github-%23121011.svg?style=for-the-badge&logo=github&logoColor=white)
 
-#####FUTURAMENTE
+##### FUTURAMENTE
 
 ![Amazon S3](https://img.shields.io/badge/Amazon%20S3-FF9900?style=for-the-badge&logo=amazons3&logoColor=white)
 ![AmazonDynamoDB](https://img.shields.io/badge/Amazon%20DynamoDB-4053D6?style=for-the-badge&logo=Amazon%20DynamoDB&logoColor=white)
@@ -36,17 +36,33 @@ Sistema de gestão API - de sistema de agendamentos - destinado a todas as área
 ## Instrução de instalação
 
 ## Pre requisitos
-#####Java Versão 17
+##### Java Versão 17
+##### Maven
 ##### Docker
 ##### Docker Compose
 
 
 ## Comandos 
 ```bash
-npm install
+docker compose up -d
+
+[+] Running 2/2
+ ✔ Network agendamento-smart-api_default  Created                                                                                                                                0.1s 
+ ✔ Container my-mysql-db                  Started 
 ``` 
 ```bash
-npm run dev
+docker ps
+
+CONTAINER ID   IMAGE       COMMAND                  CREATED          STATUS          PORTS                                                    NAMES
+cfaf466bca10   mysql:8.0   "docker-entrypoint.s…"   26 seconds ago   Up 26 seconds   0.0.0.0:3306->3306/tcp, [::]:3306->3306/tcp, 33060/tcp   my-mysql-db
+
+```
+```bash
+mvn spring-boot:run
+
+2025-08-02T14:49:34.223-04:00  INFO 23583 --- [  restartedMain] o.s.b.d.a.OptionalLiveReloadServer       : LiveReload server is running on port 35729
+2025-08-02T14:49:34.265-04:00  INFO 23583 --- [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8082 (http) with context path '/'
+2025-08-02T14:49:34.282-04:00  INFO 23583 --- [  restartedMain] c.a.smart.AgendaSmartApplication         : Started AgendaSmartApplication in 7.559 seconds (process running for 8.179)
 ```
 
 ## Licença

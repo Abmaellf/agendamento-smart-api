@@ -1,4 +1,4 @@
-package com.agendamento.smart.model;
+package com.agendamento.smart.model.scheduling;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -10,10 +10,18 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
+@Table(name="SCHEDULING")
 @Entity
-@Table(name="TB_SCHEDULING")
-public class schenduling  implements Serializable{
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(of = "id")
+public class Schenduling implements Serializable{
 
 	private static final long serialVersionUID = 1L;
 	
@@ -32,6 +40,4 @@ public class schenduling  implements Serializable{
 	
 	@Column
 	private String status;
-	
-
 }
