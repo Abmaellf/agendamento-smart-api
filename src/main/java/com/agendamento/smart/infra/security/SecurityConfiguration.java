@@ -1,6 +1,5 @@
 package com.agendamento.smart.infra.security;
 
-import com.agendamento.smart.model.user.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,6 +37,7 @@ public class SecurityConfiguration {
 
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .cors(withDefaults())
+//              .cors(AbstractHttpConfigurer::disable)
                 .build();
     }
     @Bean

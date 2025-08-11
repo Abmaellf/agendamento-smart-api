@@ -1,4 +1,6 @@
 package com.agendamento.smart.dtos;
 
-public record LoginResponseDTO(String token) {
+import com.agendamento.smart.model.user.User;
+
+public record LoginResponseDTO(String token, User user) {
 }

@@ -36,7 +36,7 @@ public class Patient {
     }
 
     public int getCode() {
-        return code.nextInt(0,999999999);
+        return code.nextInt(0,999999);
     }
 
     public String getName() {
