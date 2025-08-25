@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+//@CrossOrigin(origins = "https://agendamentos-smart.vercel.app/**")
 @RestController
 @RequestMapping("patient")
 public class PatientController {

@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.agendamento-smart</groupId>
 	<artifactId>agendamento-smart-api</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.2-SNAPSHOT</version>
 	<name>agenda-smart</name>
 	<description>Projeto de agendamentos</description>
 	<url/>
@@ -50,7 +50,7 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
 			<scope>runtime</scope>
-			<optional>true</optional>
+<!--			<optional>true</optional>-->
 		</dependency>
 		<dependency>
 			<groupId>com.mysql</groupId>

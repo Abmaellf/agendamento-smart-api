@@ -34,3 +34,4 @@ build/
 ./home
 /home
 docker-compose.yml
+application.properties

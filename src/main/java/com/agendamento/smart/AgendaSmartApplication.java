@@ -14,10 +14,4 @@ public class AgendaSmartApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(AgendaSmartApplication.class, args);
 	}
-	
-//	@RequestMapping("/list") ou
-//	@GetMapping("/hello")
-//	public String ListMenssage() {
-//		return "Ola Mundo";
-//	}
 }

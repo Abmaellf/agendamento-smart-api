@@ -21,6 +21,7 @@ public class Patient {
     private String id;
     private final Random code;
     private String name;
+//    private Empresa empresa;
     private LocalDate createdAt = LocalDate.now();
 
     public Patient() {
