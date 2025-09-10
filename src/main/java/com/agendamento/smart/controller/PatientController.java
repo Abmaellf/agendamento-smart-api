@@ -1,10 +1,12 @@
 package com.agendamento.smart.controller;
 
-import com.agendamento.smart.dtos.PatientDTO;
+import com.agendamento.smart.dtos.patient.PatientRequestDTO;
+import com.agendamento.smart.dtos.patient.PatientResponseDTO;
 import com.agendamento.smart.model.patient.Patient;
 import com.agendamento.smart.service.PatientService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,10 +26,9 @@ public class PatientController {
     }
 
     @PostMapping("/save")
-    public ResponseEntity savePatient(@RequestBody @Valid PatientDTO data){
-        Patient newPatient = new Patient();
-        newPatient.setName(data.name());
-        this.patientService.save(newPatient);
-        return ResponseEntity.ok().build();
+    public ResponseEntity savePatient(@RequestBody @Valid PatientRequestDTO dto){
+        PatientResponseDTO response = patientService.save(dto);
+//        return ResponseEntity.status(HttpStatus.CREATED).body(patientService.save(data));
+        return ResponseEntity.ok(response);
     }
 }
