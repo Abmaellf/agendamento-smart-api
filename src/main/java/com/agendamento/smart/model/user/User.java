@@ -1,5 +1,6 @@
 package com.agendamento.smart.model.user;
 
+import com.agendamento.smart.model.clinic.Clinic;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -16,8 +17,6 @@ import java.util.List;
 @Table(name="USERS")
 @Entity(name="USERS")
 @Getter
-@NoArgsConstructor
-@AllArgsConstructor
 @EqualsAndHashCode(of = "id")
 public class User implements UserDetails {
     @Id
@@ -28,11 +27,17 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private UserRole role;
 
+    public User() {
+    }
+
     public User(String login, String password, UserRole role){
         this.login = login;
         this.password = password;
         this.role = role;
     }
+
+    @OneToOne
+    private Clinic clinic;
 
     @JsonIgnore
     @Override
@@ -82,5 +87,35 @@ public class User implements UserDetails {
     @Override
     public boolean isEnabled() {
         return true;
+    }
+
+
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getLogin() {
+        return login;
+    }
+
+    public void setLogin(String login) {
+        this.login = login;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public Clinic getClinic() {
+        return clinic;
+    }
+
+    public void setClinic(Clinic clinic) {
+        this.clinic = clinic;
     }
 }

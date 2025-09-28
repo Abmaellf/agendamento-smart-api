@@ -7,10 +7,7 @@ import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 
 import java.io.Serializable;
-import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -26,13 +23,10 @@ public class Clinic implements Serializable {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
     private String name;
-    @CreatedDate
-//    private LocalDate CreatedAt;
 
-    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+   /* @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @OneToMany(mappedBy = "clinic", fetch = FetchType.LAZY)
-    private Set<Patient> patients = new HashSet<>();
-
+    private Set<Patient> patients = new HashSet<>(); */
 
     public String getId() {
         return id;
@@ -49,7 +43,7 @@ public class Clinic implements Serializable {
     public void setName(String name) {
         this.name = name;
     }
-
+/* patients
     public Set<Patient> getPatients() {
         return patients;
     }
@@ -57,4 +51,5 @@ public class Clinic implements Serializable {
     public void setPatients(Set<Patient> patients) {
         this.patients = patients;
     }
+ */
 }
