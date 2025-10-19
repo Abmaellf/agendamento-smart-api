@@ -12,6 +12,7 @@ import com.agendamento.smart.repository.ClinicRepository;
 import com.agendamento.smart.repository.UserRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -26,23 +27,18 @@ import java.time.Duration;
 @CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
 @RestController
 @RequestMapping("auth")
+@AllArgsConstructor
 public class AuthenticationController {
 
-    @Autowired
-    private AuthenticationManager authenticationManager;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private ClinicRepository clinicRepository;
-
-    @Autowired
-    private TokenService tokenService;
+    private final AuthenticationManager authenticationManager;
+    private final UserRepository userRepository;
+    private final ClinicRepository clinicRepository;
+    private final TokenService tokenService;
 
     @CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
     @PostMapping("/login")
-    public ResponseEntity login(@RequestBody @Valid AuthenticationDTO data, HttpServletResponse response){
+    public ResponseEntity<LoginResponseDTO> login(@RequestBody @Valid AuthenticationDTO data,
+                                                  HttpServletResponse response){
         System.out.println("register");
         var userNamePassword = new UsernamePasswordAuthenticationToken(data.login(), data.password());
         var auth = this.authenticationManager.authenticate(userNamePassword);
