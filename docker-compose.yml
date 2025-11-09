@@ -5,9 +5,9 @@ services:
     container_name: my-mysql-db # Assign a custom name to the container
     restart: always # Ensure the container restarts automatically if it stops
     environment:
-      MYSQL_ROOT_PASSWORD: 148625 # Set the root password for MySQL
-      MYSQL_DATABASE: agendamento-smart-api # (Optional) Create a default database
-      MYSQL_USER: abmael # (Optional) Create a new user
+      MYSQL_ROOT_PASSWORD: ${AGENDA_DB_PASSWORD} # Set the root password for MySQL
+      MYSQL_DATABASE: ${AGENDA_DB_NAME} # (Optional) Create a default database
+      MYSQL_USER: ${AGENDA_DB_USER} # (Optional) Create a new user
       MYSQL_PASSWORD: 148625 # (Optional) Set password for the new user
     ports:
       - "3306:3306" # Map host port 3306 to container port 3306

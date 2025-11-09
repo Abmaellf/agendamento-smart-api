@@ -10,10 +10,12 @@ import com.agendamento.smart.model.clinic.Clinic;
 import com.agendamento.smart.model.user.User;
 import com.agendamento.smart.repository.ClinicRepository;
 import com.agendamento.smart.repository.UserRepository;
+import com.agendamento.smart.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -34,12 +36,13 @@ public class AuthenticationController {
     private final UserRepository userRepository;
     private final ClinicRepository clinicRepository;
     private final TokenService tokenService;
+    private final UserMapper userMapper;
+    private final UserService userService;
 
     @CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(@RequestBody @Valid AuthenticationDTO data,
                                                   HttpServletResponse response){
-        System.out.println("register");
         var userNamePassword = new UsernamePasswordAuthenticationToken(data.login(), data.password());
         var auth = this.authenticationManager.authenticate(userNamePassword);
 
@@ -47,33 +50,35 @@ public class AuthenticationController {
 
         ResponseCookie cookie = ResponseCookie.from("jwt", token)
                 .httpOnly(true)              // 👈 não acessível via JS
-                .secure(true)             // true em produção com HTTPS // false para local com HTTP
+                .secure(false)             // true em produção com HTTPS // false para local com HTTP
                 .path("/")
                 .maxAge(Duration.ofHours(1)) // tempo de expiração
                 .sameSite("None")
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         User user = (User) userRepository.findByLogin(data.login());
+        System.out.println("Login");
         System.out.println(user.getRole());
         return ResponseEntity.ok(new LoginResponseDTO(token, user));
     }
 
     @CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
     @PostMapping("/register")
-    public ResponseEntity<UserResponseDTO> registrer(@RequestBody @Valid RegisterDTO data){
+    public ResponseEntity<UserResponseDTO> register(@RequestBody @Valid RegisterDTO data){
+        if (userService.existsByLogin(data.login())) {
+            throw new IllegalArgumentException("Email já está em uso");
+        }
 
-        Clinic clinic = clinicRepository.findById(data.clinicId())
+        Clinic clinic = clinicRepository.findByUuid(data.clinicId().toString())
                 .orElseThrow(() -> new RuntimeException("Clinic not found with id: " + data.clinicId()));
 
-        User user = UserMapper.toEntity(data, clinic);
-        if(this.userRepository.findByLogin(data.login()) != null) return ResponseEntity.badRequest().build();
-
-        String encryptedPassword = new BCryptPasswordEncoder().encode(user.getPassword());
-
+        String encryptedPassword = new BCryptPasswordEncoder().encode(data.password());
+        User user = userMapper.toEntity(data, clinic);
         user.setLogin(data.login());
         user.setPassword(encryptedPassword);
         user.setRole(data.role());
-
+        user.setClinic(clinic);
+        System.out.println("Register");
          userRepository.save(user);
         return ResponseEntity.ok().build();
     }

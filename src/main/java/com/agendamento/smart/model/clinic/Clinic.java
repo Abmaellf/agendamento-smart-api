@@ -1,55 +1,52 @@
 package com.agendamento.smart.model.clinic;
 
-import com.agendamento.smart.model.patient.Patient;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.agendamento.smart.model.user.User;
+import com.agendamento.smart.model.util.CodeGeneratorListener;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
+import org.hibernate.annotations.CreationTimestamp;
 
-import java.io.Serializable;
-import java.util.HashSet;
-import java.util.Set;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @Entity
-@Table
-@AllArgsConstructor
+@Table(name = "CLINIC")
+@EntityListeners(CodeGeneratorListener.class)
+@Getter
+@Setter
 @NoArgsConstructor
-@EqualsAndHashCode(of = "id")
-public class Clinic implements Serializable {
-
-    private static final long serialVersionUID = 1L;
+@AllArgsConstructor
+@Builder
+public class Clinic {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
+    @Column(columnDefinition = "BINARY(16)")
+    private UUID id;
+
+    @Column(nullable = false, unique = true, updatable = false)
+    private Long code;
+
+    @Column(nullable = false)
     private String name;
 
-   /* @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-    @OneToMany(mappedBy = "clinic", fetch = FetchType.LAZY)
-    private Set<Patient> patients = new HashSet<>(); */
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    public String getId() {
-        return id;
-    }
+    @OneToMany(mappedBy = "clinic")
+    @JsonIgnore
+    private List<User> users;
 
-    public void setId(String id) {
-        this.id = id;
+    // -------------------------
+    // GERAÇÃO AUTOMÁTICA DO CODE
+    // -------------------------
+    @PrePersist
+    public void generateCode() {
+        if (this.code == null) {
+            this.code = System.currentTimeMillis(); // número único crescente aleatório
+        }
     }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-/* patients
-    public Set<Patient> getPatients() {
-        return patients;
-    }
-
-    public void setPatients(Set<Patient> patients) {
-        this.patients = patients;
-    }
- */
 }

@@ -37,9 +37,12 @@ public class SecurityConfiguration {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                    .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
+//                    .requestMatchers(HttpMethod.GET, "/debug/db").permitAll()
+
                     .requestMatchers(HttpMethod.GET, "/patient/list").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.POST, "/patient/save").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/debug/db").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/build-info/version").permitAll()
                     .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
                     .anyRequest().authenticated())
