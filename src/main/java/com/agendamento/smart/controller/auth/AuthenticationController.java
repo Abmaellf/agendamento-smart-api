@@ -1,4 +1,4 @@
-package com.agendamento.smart.controller;
+package com.agendamento.smart.controller.auth;
 
 import com.agendamento.smart.dtos.AuthenticationDTO;
 import com.agendamento.smart.dtos.LoginResponseDTO;
@@ -14,8 +14,6 @@ import com.agendamento.smart.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;

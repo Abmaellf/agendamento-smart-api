@@ -1,4 +1,4 @@
-package com.agendamento.smart.controller;
+package com.agendamento.smart.controller.patient;
 
 import com.agendamento.smart.dtos.PageResponseDTO;
 import com.agendamento.smart.dtos.patient.PatientRequestDTO;

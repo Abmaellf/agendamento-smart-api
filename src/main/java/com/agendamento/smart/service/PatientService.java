@@ -32,22 +32,14 @@ public class PatientService implements PatientServiceInt{
 
     @Transactional
     public PatientResponseDTO save(PatientRequestDTO dto) {
+
+        Clinic clinic = clinicRepository.findByUuid(dto.clinicId().toString())
+                .orElseThrow(() -> new RuntimeException("Clinic not found"));
+
         Patient patient = patientMapper.toEntity(dto);
-
-        // 2️⃣ Buscar a clínica associada
-        Clinic clinic = clinicRepository.findById(dto.clinicId())
-                .orElseThrow(() -> new EntityNotFoundException("Clinic not found with ID: " + dto.clinicId()));
-        System.out.println("Clinica encontrada "+clinic.getName());
-        System.out.println("Paciente name"+patient.getName());
-        System.out.println("Paciente id"+patient.getId());
-
-
-        // 3️⃣ Setar o relacionamento
         patient.setClinic(clinic);
 
-        System.out.println("Clinica name "+patient.getClinic().getName());
-        System.out.println("Clinica code "+patient.getClinic().getCode());
-        patientRepository.save(patient);
+        patient = patientRepository.save(patient);
 
         return patientMapper.toDto(patient);
     }
