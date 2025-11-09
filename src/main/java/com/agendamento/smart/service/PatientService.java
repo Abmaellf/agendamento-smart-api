@@ -3,9 +3,12 @@ package com.agendamento.smart.service;
 import com.agendamento.smart.dtos.PageResponseDTO;
 import com.agendamento.smart.dtos.patient.PatientRequestDTO;
 import com.agendamento.smart.dtos.patient.PatientResponseDTO;
-import com.agendamento.smart.mapper.PatientsMapper;
+import com.agendamento.smart.mapper.PatientMapper;
+import com.agendamento.smart.model.clinic.Clinic;
 import com.agendamento.smart.model.patient.Patient;
+import com.agendamento.smart.repository.ClinicRepository;
 import com.agendamento.smart.repository.PatientRepository;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -16,7 +19,8 @@ import org.springframework.stereotype.Service;
 public class PatientService implements PatientServiceInt{
 
     private final PatientRepository patientRepository;
-    private final PatientsMapper patientMapper;
+    private final ClinicRepository clinicRepository;
+    private final PatientMapper patientMapper;
     @Override
     public PageResponseDTO<PatientResponseDTO> findAllPatient(Pageable pageable){
 
@@ -28,9 +32,16 @@ public class PatientService implements PatientServiceInt{
 
     @Transactional
     public PatientResponseDTO save(PatientRequestDTO dto) {
-        Patient patient = patientMapper.toEntity(dto);
-        Patient saved = patientRepository.save(patient);
 
-        return patientMapper.toDto(saved);
+        Clinic clinic = clinicRepository.findByUuid(dto.clinicId().toString())
+                .orElseThrow(() -> new RuntimeException("Clinic not found"));
+
+        Patient patient = patientMapper.toEntity(dto);
+        patient.setClinic(clinic);
+
+        patient = patientRepository.save(patient);
+
+        return patientMapper.toDto(patient);
     }
+
 }

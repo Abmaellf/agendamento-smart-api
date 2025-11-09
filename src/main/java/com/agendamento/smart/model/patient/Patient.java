@@ -2,61 +2,41 @@
 package com.agendamento.smart.model.patient;
 
 import com.agendamento.smart.model.clinic.Clinic;
+import com.agendamento.smart.model.util.CodeGeneratorListener;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 
-import java.io.Serializable;
-import java.time.LocalDate;
-import java.util.Optional;
-import java.util.Random;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
-@Table(name="PATIENT")
 @Entity
+@Table(name = "PATIENT")
+@EntityListeners(CodeGeneratorListener.class)
 @Getter
 @Setter
+@NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(of = "id")
-public class Patient implements Serializable {
+@Builder
+public class Patient {
 
-    private static final long serialVersionUID = 1L;
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
-    private final Random code;
-    private String name;
-    @ManyToOne
-    @JoinColumn(name = "clinic_id") //nome no bd
-    private Clinic clinic;
-    private LocalDate createdAt = LocalDate.now();
+    @Column(columnDefinition = "BINARY(16)")
+    private UUID id;
 
-    public Clinic getClinic() {
-        return clinic;
-    }
-    public void setClinic(Clinic clinic) {
-        this.clinic = clinic;
-    }
-    public Patient() {
-        this.code = new Random();
-    }
-    public String getId() {
-        return id;
-    }
-    public void setId(String id) {
-        this.id = id;
-    }
-    public int getCode() {
-        return code.nextInt(0,999999);
-    }
-    public String getName() {
-        return name;
-    }
-    public void setName(String name) {
-        this.name = name;
-    }
-    public LocalDate getCreatedAt() {
-        return createdAt;
-    }
-    public void setCreatedAt(LocalDate createdAt) {
-        this.createdAt = createdAt;
-    }
+    @Column(nullable = false, unique = true, updatable = false)
+    private Long code;
+
+    @Column(nullable = false)
+    private String name;
+
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "clinic_id", nullable = false)
+    private Clinic clinic;
+
 }

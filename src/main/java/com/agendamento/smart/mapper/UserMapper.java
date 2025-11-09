@@ -1,27 +1,19 @@
 package com.agendamento.smart.mapper;
 
+import com.agendamento.smart.dtos.AuthenticationDTO;
 import com.agendamento.smart.dtos.user.RegisterDTO;
 import com.agendamento.smart.dtos.user.UserResponseDTO;
 import com.agendamento.smart.model.clinic.Clinic;
 import com.agendamento.smart.model.user.User;
+import org.mapstruct.Mapper;
+import org.mapstruct.factory.Mappers;
 
-public class UserMapper {
-    public static User toEntity(RegisterDTO dto, Clinic clinic){
-        User user = new User();
-        user.setLogin(dto.login());
-        user.setPassword(dto.password());
-        user.setRole(dto.role());
-        user.setClinic(clinic);
-        return user;
-    }
+@Mapper(componentModel = "spring")
+public interface UserMapper {
 
-    public static UserResponseDTO toDTO(User user){
-        return new UserResponseDTO(
-                user.getLogin(),
-                user.getRole(),
-                user.getClinic() != null ? user.getClinic().getId() : null,
-                user.getClinic() != null ? user.getClinic().getName() : null
+    UserMapper INSTANCE = Mappers.getMapper(UserMapper.class);
 
-        );
-    }
+//     UserResponseDTO toEntity(RegisterDTO registerDTO, Clinic clinic);
+
+     User toEntity(RegisterDTO registerDTO, Clinic clinic);
 }

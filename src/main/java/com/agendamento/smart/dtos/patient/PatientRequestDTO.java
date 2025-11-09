@@ -1,4 +1,6 @@
 package com.agendamento.smart.dtos.patient;
 
-public record PatientRequestDTO(String name, String clinicId) {
+import java.util.UUID;
+
+public record PatientRequestDTO(String name, UUID clinicId) {
 }
