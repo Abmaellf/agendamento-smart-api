@@ -37,9 +37,11 @@ public class PatientService implements PatientServiceInt{
                 .orElseThrow(() -> new RuntimeException("Clinic not found"));
 
         Patient patient = patientMapper.toEntity(dto);
+        patient.setName(dto.name());
         patient.setClinic(clinic);
 
         patient = patientRepository.save(patient);
+        System.out.println(patient.getName());
 
         return patientMapper.toDto(patient);
     }
