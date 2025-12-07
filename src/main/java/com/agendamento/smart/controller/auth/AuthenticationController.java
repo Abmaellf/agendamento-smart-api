@@ -17,12 +17,14 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
+import java.util.List;
 
 @CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
 @RestController
@@ -30,6 +32,7 @@ import java.time.Duration;
 @AllArgsConstructor
 public class AuthenticationController {
 
+    /* Esse serviço abaixo esta injetado na classe SecurityConfiguration como @Bean*/
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final ClinicRepository clinicRepository;
@@ -41,7 +44,10 @@ public class AuthenticationController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(@RequestBody @Valid AuthenticationDTO data,
                                                   HttpServletResponse response){
+        /*Cria um objeto do tipo UsernamePasswordAuthenticationToken que é necessário para authenticar*/
         var userNamePassword = new UsernamePasswordAuthenticationToken(data.login(), data.password());
+
+        /*authenticationManager, responsável pela Autenticação e retorna um objeto do tipo Authenticatio*/
         var auth = this.authenticationManager.authenticate(userNamePassword);
 
         var token = tokenService.generateToken( (User) auth.getPrincipal());
@@ -79,5 +85,12 @@ public class AuthenticationController {
         System.out.println("Register");
          userRepository.save(user);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/list")
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
+    public ResponseEntity<List<User>> list(){
+        List<User> user = userRepository.findAll();
+        return ResponseEntity.ok(user);
     }
 }

@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 //@CrossOrigin(origins = "https://agendamentos-smart.vercel.app/**")
@@ -18,6 +19,7 @@ public class PatientController {
     @Autowired
     private PatientService patientService;
 
+   @PreAuthorize("hasAnyRole('ADMIN','USER')")
     @GetMapping("/list")
     public ResponseEntity<PageResponseDTO<PatientResponseDTO>> findAllPatient(Pageable pageable) {
         PageResponseDTO<PatientResponseDTO> patientResponseDTO = patientService.findAllPatient(pageable);
@@ -25,6 +27,7 @@ public class PatientController {
     }
 
     @PostMapping("/save")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PatientResponseDTO> savePatient(@RequestBody @Valid PatientRequestDTO dto){
         PatientResponseDTO response = patientService.save(dto);
         System.out.println(response);

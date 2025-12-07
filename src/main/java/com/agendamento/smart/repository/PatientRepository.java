@@ -17,6 +17,8 @@ public interface PatientRepository extends JpaRepository<Patient, String> {
     @Query("SELECT MAX(p.code) FROM Patient p")
     Optional<Long> findMaxCode();
 
+    Optional<Patient> findByName(String name);
+
         /* @Query(value = "SELECT * FROM tb_book WHERE publisher_id = :id", nativeQuery = true)
         List<Patient> findPatientByClinicId(@Param("id") String id); */
 
