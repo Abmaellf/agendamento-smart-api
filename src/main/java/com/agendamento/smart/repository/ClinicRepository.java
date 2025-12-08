@@ -11,8 +11,17 @@ import java.util.UUID;
 
 @Repository
 public interface ClinicRepository extends JpaRepository<Clinic, UUID> {
-    @Query(value = "SELECT * FROM clinic WHERE BIN_TO_UUID(id, 1) = :uuid", nativeQuery = true)
-    Optional<Clinic> findByUuid(@Param("uuid") String uuid);
+//    @Query(value = "SELECT * FROM Clinic WHERE BIN_TO_UUID(id, 1) = :uuid", nativeQuery = true)
+//    Optional<Clinic> findByUuid(@Param("uuid") String uuid);
+
+
+    @Query(
+            value = "SELECT * FROM CLINIC WHERE id = UUID_TO_BIN(:id, 1)",
+            nativeQuery = true
+    )
+    Optional<Clinic> findByUuid(String id);
+//    Optional<Clinic> findById(UUID id);
+
 
     @Query("SELECT MAX(c.code) FROM Clinic c")
     Optional<Long> findMaxCode();

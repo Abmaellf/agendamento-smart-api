@@ -41,6 +41,11 @@
             <version>1.5.5.Final</version> <!-- Use a versão mais recente -->
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok-mapstruct-binding</artifactId>
+            <version>0.2.0</version>
+        </dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -83,6 +88,18 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+        <!-- Flyway principal -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+            <version>10.20.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+            <version>10.20.0</version>
+        </dependency>
 	</dependencies>
 
 	<build>
@@ -93,6 +110,19 @@
             </resource>
         </resources>
 		<plugins>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>10.0.0</version>
+                <configuration>
+                    <!--suppress UnresolvedMavenProperty -->
+                    <url>jdbc:mysql://localhost:3306/agendamento-smart-api</url>
+                    <!--suppress UnresolvedMavenProperty -->
+                    <user>abmael</user>
+                    <!--suppress UnresolvedMavenProperty -->
+                    <password>148625</password>
+                </configuration>
+            </plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
