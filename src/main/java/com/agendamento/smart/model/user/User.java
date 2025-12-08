@@ -2,6 +2,7 @@ package com.agendamento.smart.model.user;
 
 import com.agendamento.smart.model.clinic.Clinic;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -12,8 +13,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
-@Table(name="USERS")
 @Entity
+@Table(name="USERS")
 @Getter
 @Setter
 @AllArgsConstructor
@@ -21,7 +22,7 @@ import java.util.UUID;
 @Builder
 public class User implements UserDetails {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue
     @Column(columnDefinition = "BINARY(16)")
     private UUID id;
     private String login;
@@ -29,11 +30,11 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private UserRole role;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JsonIgnore
+//    @ManyToOne(fetch = FetchType.LAZY)
+    @JsonManagedReference
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "clinic_id", nullable = false, columnDefinition = "BINARY(16)")
     private Clinic clinic;
-
 
     @JsonIgnore
     @Override

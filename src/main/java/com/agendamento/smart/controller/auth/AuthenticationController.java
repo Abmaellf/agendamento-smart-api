@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.UUID;
 
 @CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
 @RestController
@@ -67,14 +68,17 @@ public class AuthenticationController {
     }
 
     @CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
-    @PostMapping("/register")
-    public ResponseEntity<UserResponseDTO> register(@RequestBody @Valid RegisterDTO data){
+    @PostMapping("/register/{clinicId}")
+    public ResponseEntity<UserResponseDTO> register(@PathVariable UUID clinicId, @RequestBody @Valid RegisterDTO data){
         if (userService.existsByLogin(data.login())) {
             throw new IllegalArgumentException("Email já está em uso");
         }
 
-        Clinic clinic = clinicRepository.findByUuid(data.clinicId().toString())
-                .orElseThrow(() -> new RuntimeException("Clinic not found with id: " + data.clinicId()));
+//        Clinic clinic = clinicRepository.findByUuid(data.clinicId().toString())
+//                .orElseThrow(() -> new RuntimeException("Clinic not found with id: " + data.clinicId()));
+
+        Clinic clinic = clinicRepository.findById(clinicId)
+                .orElseThrow(() -> new RuntimeException("Clinic not found with id: " + clinicId));
 
         String encryptedPassword = new BCryptPasswordEncoder().encode(data.password());
         User user = userMapper.toEntity(data, clinic);

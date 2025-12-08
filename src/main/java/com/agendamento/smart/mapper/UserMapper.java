@@ -6,6 +6,7 @@ import com.agendamento.smart.dtos.user.UserResponseDTO;
 import com.agendamento.smart.model.clinic.Clinic;
 import com.agendamento.smart.model.user.User;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
 @Mapper(componentModel = "spring")
@@ -14,6 +15,6 @@ public interface UserMapper {
     UserMapper INSTANCE = Mappers.getMapper(UserMapper.class);
 
 //     UserResponseDTO toEntity(RegisterDTO registerDTO, Clinic clinic);
-
+     @Mapping(target = "id", ignore = true)
      User toEntity(RegisterDTO registerDTO, Clinic clinic);
 }

@@ -36,7 +36,10 @@ public class PatientService implements PatientServiceInt{
     @Transactional
     public PatientResponseDTO save(PatientRequestDTO dto) {
 
-        Clinic clinic = clinicRepository.findByUuid(dto.clinicId().toString())
+//        Clinic clinic = clinicRepository.findByUuid(dto.clinicId().toString())
+//                .orElseThrow(() -> new RuntimeException("Clinic not found"));
+
+        Clinic clinic = clinicRepository.findById(dto.clinicId())
                 .orElseThrow(() -> new RuntimeException("Clinic not found"));
 
         Patient patient = patientMapper.toEntity(dto);

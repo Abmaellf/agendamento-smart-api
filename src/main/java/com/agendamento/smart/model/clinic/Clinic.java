@@ -33,16 +33,13 @@ public class Clinic {
     private String name;
 
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(name  = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "clinic")
     @JsonIgnore
     private List<User> users;
 
-    // -------------------------
-    // GERAÇÃO AUTOMÁTICA DO CODE
-    // -------------------------
     @PrePersist
     public void generateCode() {
         if (this.code == null) {

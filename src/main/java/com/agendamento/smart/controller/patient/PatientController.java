@@ -19,7 +19,7 @@ public class PatientController {
     @Autowired
     private PatientService patientService;
 
-   @PreAuthorize("hasAnyRole('ADMIN','USER')")
+//   @PreAuthorize("hasAnyRole('ADMIN','USER')")
     @GetMapping("/list")
     public ResponseEntity<PageResponseDTO<PatientResponseDTO>> findAllPatient(Pageable pageable) {
         PageResponseDTO<PatientResponseDTO> patientResponseDTO = patientService.findAllPatient(pageable);

@@ -4,5 +4,5 @@ import com.agendamento.smart.model.user.UserRole;
 
 import java.util.UUID;
 
-public record RegisterDTO(String login, String password, UserRole role, UUID clinicId) {
+public record RegisterDTO(String login, String password, UserRole role) {
 }
