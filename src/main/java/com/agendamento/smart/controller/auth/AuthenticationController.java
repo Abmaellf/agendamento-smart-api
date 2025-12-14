@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,7 +28,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
-@CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
+//@CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
+@CrossOrigin(origins = "http:localhost:3000")
 @RestController
 @RequestMapping("auth")
 @AllArgsConstructor
@@ -41,7 +43,8 @@ public class AuthenticationController {
     private final UserMapper userMapper;
     private final UserService userService;
 
-    @CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
+//    @CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
+    @CrossOrigin(origins = "http:localhost:3000")
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(@RequestBody @Valid AuthenticationDTO data,
                                                   HttpServletResponse response){
@@ -58,7 +61,7 @@ public class AuthenticationController {
                 .secure(false)             // true em produção com HTTPS // false para local com HTTP
                 .path("/")
                 .maxAge(Duration.ofHours(1)) // tempo de expiração
-                .sameSite("None")
+                .sameSite("Lax")
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         User user = (User) userRepository.findByLogin(data.login());
@@ -95,6 +98,12 @@ public class AuthenticationController {
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<List<User>> list(){
         List<User> user = userRepository.findAll();
+        return ResponseEntity.ok(user);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<User> me(Authentication authentication){
+        User user = userService.currentUserService(authentication);
         return ResponseEntity.ok(user);
     }
 }
