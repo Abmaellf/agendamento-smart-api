@@ -35,7 +35,8 @@ public class SecurityConfiguration {
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(withDefaults())
+//                .cors(withDefaults())
+                .cors(cors -> {}) // habilita suporte ao CorsConfig
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
@@ -43,6 +44,7 @@ public class SecurityConfiguration {
                     .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
                     .requestMatchers(HttpMethod.GET, "/patient/list").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/api/scheduling").hasAnyRole("ADMIN", "USER")
+                    .requestMatchers(HttpMethod.GET, "/auth/me").hasAnyRole("ADMIN", "USER")
                     .requestMatchers(HttpMethod.POST, "/auth/register/**").permitAll()
                     .anyRequest().authenticated())
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
