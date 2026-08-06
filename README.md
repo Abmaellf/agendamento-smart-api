@@ -36,7 +36,7 @@ Sistema de gestão API - de sistema de agendamentos - destinado a todas as área
 ## Instrução de instalação
 
 ## Pre requisitos
-##### Java Versão 17
+##### Java Versão 21
 ##### Maven
 ##### Docker
 ##### Docker Compose
