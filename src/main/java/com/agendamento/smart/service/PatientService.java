@@ -1,5 +1,6 @@
 package com.agendamento.smart.service;
 
+import com.agendamento.smart.controller.exception.PatientAlreadyExistsException;
 import com.agendamento.smart.dtos.PageResponseDTO;
 import com.agendamento.smart.dtos.patient.PatientRequestDTO;
 import com.agendamento.smart.dtos.patient.PatientResponseDTO;
@@ -48,7 +49,7 @@ public class PatientService implements PatientServiceInt{
         Optional<Patient> existsOpt = patientRepository.findByName(namePatient);
 
         existsOpt.ifPresent(p -> {
-            throw new DuplicateRequestException("Patient already exists");
+            throw new PatientAlreadyExistsException("Patient already exists");
         });
 
 

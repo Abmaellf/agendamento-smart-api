@@ -1,0 +1,15 @@
+target/
+.git/
+.idea/
+.metadata/
+.settings/
+.vscode/
+.mvn/
+.env
+*.iml
+*.iws
+*.ipr
+Dockerfile
+docker-compose.yml
+README.md
+HELP.md

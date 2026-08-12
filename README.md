@@ -3,7 +3,7 @@
 
 ![Java](https://img.shields.io/badge/java-%23ED8B00.svg?style=for-the-badge&logo=openjdk&logoColor=white)
 ![Spring](https://img.shields.io/badge/spring-%236DB33F.svg?style=for-the-badge&logo=spring&logoColor=white)
-![Postgres](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
+![MySQL](https://img.shields.io/badge/mysql-%234479A1.svg?style=for-the-badge&logo=mysql&logoColor=white)
 ![Apache Maven](https://img.shields.io/badge/Apache%20Maven-C71A36?style=for-the-badge&logo=Apache%20Maven&logoColor=white)
 ![Apache Tomcat](https://img.shields.io/badge/apache%20tomcat-%23F8DC75.svg?style=for-the-badge&logo=apache-tomcat&logoColor=black)
 ![Hibernate](https://img.shields.io/badge/Hibernate-59666C?style=for-the-badge&logo=Hibernate&logoColor=white)
@@ -31,7 +31,24 @@
 ## Descrição
 Sistema de gestão API - de sistema de agendamentos - destinado a todas as áreas médicas, clínicas de Psicologia, Fisioterapia etc.
 
- 
+## Documentação técnica
+
+- [Índice da documentação](docs/README.md)
+- [Arquitetura do Sistema](docs/ARQUITETURA_DO_SISTEMA.md)
+- [Objetivo do sistema](docs/OBJETIVO_DO_SISTEMA.md)
+- [Requisitos confirmados do MVP](docs/REQUISITOS_DO_MVP.md)
+- [Entrevista de descoberta](docs/ENTREVISTA_DE_DESCOBERTA.md)
+- Cada pacote relevante em `src/main` possui um `README.md` com responsabilidades, dependências, entradas e débitos locais.
+
+`Objetivo do sistema` e `Arquitetura do Sistema` descrevem o código atual. `Requisitos do MVP` descreve o contrato-alvo confirmado e não deve ser interpretado como funcionalidade já entregue.
+
+## Regras confirmadas do produto
+
+A clínica representa o tenant e será a fronteira de segurança. O modelo-alvo inclui unidade padrão, usuários, pacientes, profissionais, serviços, agendamentos, séries recorrentes e eventos de auditoria. Pacientes e profissionais são compartilhados no tenant; agendamentos pertencem também a uma unidade.
+
+O MVP bloqueia, sem exceção, sobreposição do mesmo paciente, sobreposição do mesmo profissional e capacidade excedida do serviço. Agendamentos preservam duração e preço aplicados, nunca são excluídos e usam os estados `AGENDADO`, `CONFIRMADO`, `EM_ATENDIMENTO`, `CONCLUIDO`, `CANCELADO`, `FALTA` e `REMARCADO`.
+
+O backend atual ainda não implementa a maior parte dessas regras. As decisões restantes estão sendo fechadas na entrevista técnica e de produto.
 
 ## Instrução de instalação
 
@@ -42,14 +59,14 @@ Sistema de gestão API - de sistema de agendamentos - destinado a todas as área
 ##### Docker Compose
 
 
-## Comandos 
+## Comandos
 ```bash
 docker compose up -d
 
 [+] Running 2/2
- ✔ Network agendamento-smart-api_default  Created                                                                                                                                0.1s 
- ✔ Container my-mysql-db                  Started 
-``` 
+ ✔ Network agendamento-smart-api_default  Created                                                                                                                                0.1s
+ ✔ Container my-mysql-db                  Started
+```
 ```bash
 docker ps
 
