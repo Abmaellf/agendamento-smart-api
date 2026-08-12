@@ -1,17 +1,69 @@
-version: '3.8' # Specify the Docker Compose file format version
+name: agendamento-smart
+
 services:
-  db: # Define a service named 'db' for MySQL
-    image: mysql:8.0 # Use the official MySQL 8.0 image from Docker Hub
-    container_name: my-mysql-db # Assign a custom name to the container
-    restart: always # Ensure the container restarts automatically if it stops
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: agendamento-smart-api:${APP_VERSION:-local}
+    restart: unless-stopped
+    init: true
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
-      MYSQL_ROOT_PASSWORD: ${AGENDA_DB_PASSWORD} # Set the root password for MySQL
-      MYSQL_DATABASE: ${AGENDA_DB_NAME} # (Optional) Create a default database
-      MYSQL_USER: ${AGENDA_DB_USER} # (Optional) Create a new user
-      MYSQL_PASSWORD: 148625 # (Optional) Set password for the new user
+      AGENDA_URL: jdbc:mysql://db:3306/${AGENDA_DB_NAME:-agendamento-smart-api}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      AGENDA_DB_USER: ${AGENDA_DB_USER:-abmael}
+      AGENDA_DB_PASSWORD: ${AGENDA_DB_PASSWORD:-148625}
+      JWT_SECRET: ${JWT_SECRET:-local-development-secret-change-me}
     ports:
-      - "3306:3306" # Map host port 3306 to container port 3306
+      - "${AGENDA_API_BIND_ADDRESS:-0.0.0.0}:${AGENDA_API_PORT:-8082}:8082"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${AGENDA_DB_ROOT_PASSWORD:-${AGENDA_DB_PASSWORD:-148625}}
+      MYSQL_DATABASE: ${AGENDA_DB_NAME:-agendamento-smart-api}
+      MYSQL_USER: ${AGENDA_DB_USER:-abmael}
+      MYSQL_PASSWORD: ${AGENDA_DB_PASSWORD:-148625}
+    ports:
+      - "3306:3306"
     volumes:
-      - db_data:/var/lib/mysql # Mount a named volume for data persistence
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping --host=127.0.0.1 --user="$${MYSQL_USER}" --password="$${MYSQL_PASSWORD}" --silent
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  backend:
+    driver: bridge
+
 volumes:
-  db_data: # Define the named volume for data persistence
+  db_data:
