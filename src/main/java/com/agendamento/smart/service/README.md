@@ -28,7 +28,7 @@ Orquestrar autenticação Spring, clínicas, pacientes, usuário atual e informa
 
 ## Módulos relacionados
 
-Controllers, `repository`, `mapper`, `model`, `dtos`, `infra/security` e `service/scheduling`.
+Controllers, `repository`, `mapper`, `model`, `dtos`, `infra/security` e `service/appointment`.
 
 ## Pontos de entrada
 

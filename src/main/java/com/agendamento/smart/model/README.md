@@ -6,7 +6,7 @@ Agrupar entidades JPA, enums, callbacks de persistência e conversores que repre
 
 ## Responsabilidades principais
 
-- Definir o grafo `Clinic -> User` e `Clinic -> Patient -> Scheduling`.
+- Definir o grafo `Clinic -> User` e `Clinic -> Patient -> Appointment`.
 - Mapear classes Java para o schema controlado pelo Flyway.
 - Representar papéis e estados de agendamento.
 - Executar conversões/callbacks associados às entidades.
@@ -19,7 +19,7 @@ Agrupar entidades JPA, enums, callbacks de persistência e conversores que repre
 
 ## Dependências internas e externas
 
-- Internas: subpacotes `clinic`, `user`, `patient`, `scheduling` e `util`; o listener depende de `repository`.
+- Internas: subpacotes `appointment`, `clinic`, `user`, `patient` e `util`; o listener depende de `repository`.
 - Externas: JPA/Hibernate, Lombok, Jackson e Spring Security no modelo de usuário.
 
 ## Módulos relacionados
@@ -39,7 +39,7 @@ DTO/service -> entidade -> repository/JPA -> MySQL; MySQL -> JPA -> entidade -> 
 - `clinic/Clinic.java`.
 - `user/User.java` e `user/UserRole.java`.
 - `patient/Patient.java`.
-- `scheduling/Scheduling.java`, enum e conversor.
+- `appointment/Appointment.java`, `AppointmentStatus.java` e conversor.
 - `util/CodeGeneratorListener.java`.
 
 ## Regras confirmadas para evolução do módulo

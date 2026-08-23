@@ -1,4 +1,4 @@
-package com.agendamento.smart.model.scheduling;
+package com.agendamento.smart.model.appointment;
 
 import com.agendamento.smart.model.clinic.Clinic;
 import com.agendamento.smart.model.patient.Patient;
@@ -22,28 +22,28 @@ import java.util.List;
 import java.util.UUID;
 
 @Table(
-        name = "SCHEDULING",
+        name = "APPOINTMENT",
         indexes = {
                 @Index(
-                        name = "idx_scheduling_clinic_start",
+                        name = "idx_appointment_clinic_start",
                         columnList = "clinic_id, starts_at"
                 ),
                 @Index(
-                        name = "idx_scheduling_unit_start",
+                        name = "idx_appointment_unit_start",
                         columnList = "clinic_id, unit_id, starts_at"
                 ),
                 @Index(
-                        name = "idx_scheduling_professional_start",
+                        name = "idx_appointment_professional_start",
                         columnList = "clinic_id, professional_id, starts_at"
                 ),
                 @Index(
-                        name = "idx_scheduling_patient_start",
+                        name = "idx_appointment_patient_start",
                         columnList = "clinic_id, patient_id, starts_at"
                 )
         },
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_scheduling_clinic_idempotency",
+                        name = "uk_appointment_clinic_idempotency",
                         columnNames = {"clinic_id", "idempotency_key"}
                 )
         }
@@ -53,7 +53,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @Entity
 @EntityListeners(AuditingEntityListener.class)
-public class Scheduling {
+public class Appointment {
 
     @Id
     @GeneratedValue
@@ -103,15 +103,15 @@ public class Scheduling {
     @Convert(converter = StringListJsonConverter.class)
     private List<String> pathology;
 
-    @Column(name = "date_scheduling", nullable = false)
-    private LocalDateTime dateScheduling;
+    @Column(name = "appointment_date", nullable = false)
+    private LocalDateTime appointmentDate;
 
     @Column(nullable = false)
     private LocalTime hours;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private StatusScheduling status = StatusScheduling.AGENDADO;
+    private AppointmentStatus status = AppointmentStatus.AGENDADO;
 
     private String variant;
 
@@ -123,7 +123,7 @@ public class Scheduling {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-      @Version
+    @Version
     @Column(nullable = false)
     private Long version;
 }

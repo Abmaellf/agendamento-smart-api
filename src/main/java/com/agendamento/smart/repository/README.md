@@ -14,7 +14,7 @@ Definir a porta concreta de persistência Spring Data JPA para clínicas, usuár
 
 ## Funcionalidades existentes
 
-- `ClinicRepository`, `UserRepository`, `PatientRepository` e `SchedulingRepository`.
+- `ClinicRepository`, `UserRepository`, `PatientRepository` e `AppointmentRepository`.
 - Queries derivadas, JPQL e uma query MySQL nativa.
 
 ## Dependências internas e externas
@@ -24,7 +24,7 @@ Definir a porta concreta de persistência Spring Data JPA para clínicas, usuár
 
 ## Módulos relacionados
 
-`service`, `service/scheduling`, `infra/security`, alguns controllers e `model/util`.
+`service`, `service/appointment`, `infra/security`, alguns controllers e `model/util`.
 
 ## Pontos de entrada
 
@@ -40,7 +40,7 @@ Service/controller/filtro/listener -> repository proxy -> Hibernate -> datasourc
 - `ClinicRepository.java`.
 - `UserRepository.java`.
 - `PatientRepository.java`.
-- `SchedulingRepository.java`.
+- `AppointmentRepository.java`.
 
 ## Regras confirmadas para evolução do módulo
 
@@ -54,7 +54,7 @@ Service/controller/filtro/listener -> repository proxy -> Hibernate -> datasourc
 ## Observações técnicas e débitos identificados
 
 - `ClinicRepository.findByUuid` não possui chamada ativa e usa `UUID_TO_BIN(..., 1)`, enquanto a seed usa `UNHEX(REPLACE(...))`; os formatos podem divergir.
-- `SchedulingRepository.findById` e `PatientRepository.findAll(Pageable)` redeclaram operações herdadas.
+- `AppointmentRepository.findById` e `PatientRepository.findAll(Pageable)` redeclaram operações herdadas.
 - `UserRepository.findByLogin` retorna `UserDetails`, exigindo casts em consumidores de domínio.
 - `findMaxCode` sustenta uma geração de código sujeita a concorrência.
 - `findByName` verifica duplicidade global, sem clínica e sem constraint correspondente no banco.

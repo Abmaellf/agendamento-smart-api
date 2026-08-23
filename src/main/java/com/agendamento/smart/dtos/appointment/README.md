@@ -11,31 +11,31 @@ Definir os contratos de criação e leitura de agendamentos.
 
 ## Funcionalidades existentes
 
-- `SchedulingRequest` exige `patientId`, `pathology`, `dateScheduling` e `hours` não nulos.
-- `SchedulingResponse` representa o agendamento persistido.
+- `AppointmentRequest` exige `patientId`, `unitId`, `serviceId`, `startsAt`, `durationMinutes` e `price`; `professionalId` é opcional.
+- `AppointmentResponse` representa o agendamento persistido.
 
 ## Dependências internas e externas
 
-- Internas: `model/scheduling/StatusScheduling`.
+- Internas: `model/appointment/AppointmentStatus`.
 - Externas: Jakarta Validation e tipos Java de UUID/data/hora/lista.
 
 ## Módulos relacionados
 
-`controller/scheduling`, `service/scheduling`, `mapper` e `model/scheduling`.
+`controller/appointment`, `service/appointment` e `model/appointment`.
 
 ## Pontos de entrada
 
-- Corpo de `POST /api/scheduling`.
-- Corpo de resposta de criação e `GET /api/scheduling/{id}`.
+- Corpo de `POST /api/appointments`.
+- Corpo de resposta de criação e `GET /api/appointments` ou `GET /api/appointments/{id}`.
 
 ## Fluxos de entrada
 
-JSON -> `SchedulingRequest` -> MapStruct -> entidade; entidade -> MapStruct -> `SchedulingResponse` -> JSON.
+JSON -> `AppointmentRequest` -> service -> entidade; entidade -> service -> `AppointmentResponse` -> JSON.
 
 ## Arquivos críticos
 
-- `SchedulingRequest.java`.
-- `SchedulingResponse.java`.
+- `AppointmentRequest.java`.
+- `AppointmentResponse.java`.
 
 ## Regras confirmadas para evolução do módulo
 
@@ -48,8 +48,7 @@ JSON -> `SchedulingRequest` -> MapStruct -> entidade; entidade -> MapStruct -> `
 
 ## Observações técnicas e débitos identificados
 
-- O pacote se chama `agendamento`, enquanto controller, service e model usam `scheduling`.
-- O status de entrada não é obrigatório, mas o mapper atribui o valor nulo à entidade e remove o default `AGENDADO`.
-- `dateScheduling` contém data e hora e coexiste com `hours`, sem regra de consistência.
+- O pacote canônico é `dtos.appointment`, alinhado a controller, service e model.
+- `appointmentDate` contém data e hora e coexiste com `hours`, sem regra de consistência.
 - Os DTOs dependem diretamente do enum persistente.
 - Não há constraints de tamanho/conteúdo para patologias, validação de data futura ou valores aceitos para `variant`.

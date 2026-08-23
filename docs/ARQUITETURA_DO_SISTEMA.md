@@ -53,15 +53,15 @@ Há exceções relevantes ao fluxo: `AuthenticationController` e `UserController
 | `Clinic` | `CLINIC` | UUID em `BINARY(16)` | `code` único; possui usuários; migration cria a clínica inicial |
 | `User` | `USERS` | UUID em `BINARY(16)` | login único no banco; pertence obrigatoriamente a uma clínica; papel `ADMIN` ou `USER` |
 | `Patient` | `PATIENT` | UUID em `BINARY(16)` | `code` único; pertence obrigatoriamente a uma clínica |
-| `Scheduling` | `SCHEDULING` | UUID em `BINARY(16)` | pertence obrigatoriamente a um paciente; patologias em JSON; exclusão do paciente apaga agendamentos |
+| `Appointment` | `APPOINTMENT` | UUID em `BINARY(16)` | pertence a clínica, unidade, paciente e serviço; profissional é opcional; exclusões relacionadas são restritivas |
 
-As relações formam a cadeia `Clinic -> User` e `Clinic -> Patient -> Scheduling`. A aplicação não implementa, porém, filtros de consulta ou autorização que restrinjam dados à clínica do usuário autenticado.
+As relações formam a cadeia `Clinic -> User` e `Clinic -> Patient -> Appointment`, com cada agendamento também vinculado a uma unidade e a um serviço.
 
 ## Modelo de domínio alvo confirmado
 
 O contrato-alvo mínimo é `Tenant/Clinic -> Unit`, com `User`, `Patient`, `Professional`, `Service`, `Appointment`, `AppointmentSeries` e `AppointmentEvent`. `Clinic` representará o tenant/conta; unidades físicas são filhas. Pacientes e profissionais pertencem ao tenant, enquanto agendamentos pertencem também a uma unidade.
 
-Todo registro de negócio possuirá `tenantId`, `createdAt` e `updatedAt`, além de autoria quando relevante. O agendamento guardará snapshots da duração e do preço. Eventos de transição, remarcação e cancelamento serão imutáveis e agendamentos não poderão ser apagados. O schema atual não atende ainda a essas invariantes.
+Todo registro de negócio possuirá `tenantId`, `createdAt` e `updatedAt`, além de autoria quando relevante. O agendamento já guarda snapshots da duração e do preço, autoria e vínculos de tenant/unidade. Eventos de transição, remarcação e cancelamento imutáveis ainda não existem.
 
 ## Endpoints e proteção observada
 
@@ -73,12 +73,13 @@ Todo registro de negócio possuirá `tenantId`, `createdAt` e `updatedAt`, além
 | `POST /user/register/{clinicId}` | Cria usuário na clínica informada, com papel recebido no corpo | Qualquer usuário autenticado, por `anyRequest().authenticated()` |
 | `GET /patient/list` | Lista paginada de todos os pacientes | Pública |
 | `POST /patient/save` | Cria paciente na clínica informada | JWT + `ADMIN` |
-| `POST /api/scheduling` | Cria agendamento para o paciente informado | Qualquer usuário autenticado |
-| `GET /api/scheduling/{id}` | Consulta um agendamento por UUID | Qualquer usuário autenticado |
+| `POST /api/appointments` | Cria agendamento para o paciente informado | Qualquer usuário autenticado |
+| `GET /api/appointments` | Lista agendamentos por unidade e intervalo | Qualquer usuário autenticado |
+| `GET /api/appointments/{id}` | Consulta um agendamento por UUID | Qualquer usuário autenticado |
 | `GET /api/build-info/version` | Retorna a versão do build/projeto | Qualquer usuário autenticado |
 | `GET /debug/db` | Retorna o banco selecionado pela conexão | Qualquer usuário autenticado |
 
-`SecurityConfiguration` libera `POST /auth/register/**`, mas não existe controller nessa rota. O cadastro real está em `/user/register/{clinicId}` e, portanto, cai na regra autenticada padrão. A regra específica para `GET /api/scheduling` também não corresponde ao endpoint implementado, que exige `/{id}`; a autenticação ocorre pela regra padrão.
+`SecurityConfiguration` libera `POST /auth/register/**`, mas não existe controller nessa rota. O cadastro real está em `/user/register/{clinicId}` e, portanto, cai na regra autenticada padrão. A regra específica para `GET /api/appointments` cobre a listagem; a consulta por ID também exige autenticação pela regra padrão.
 
 ## Principais fluxos técnicos
 
@@ -102,15 +103,15 @@ Todo registro de negócio possuirá `tenantId`, `createdAt` e `updatedAt`, além
 
 ### Criação e consulta de agendamentos
 
-1. `SchedulingController` recebe `SchedulingRequest` validado apenas nos campos anotados com `@NotNull`.
-2. `SchedulingService` resolve o paciente por UUID.
-3. `SchedulingMapper` converte o request; o service associa o paciente e persiste.
+1. `AppointmentController` recebe `AppointmentRequest` validado pelas constraints Jakarta Validation.
+2. `AppointmentService` resolve, no tenant autenticado, paciente, unidade, serviço e profissional opcional.
+3. O service constrói `Appointment`, valida conflitos/capacidade e persiste; não existe mapper específico para o módulo.
 4. `StringListJsonConverter` serializa `pathology` para a coluna JSON.
-5. A consulta busca somente por UUID e converte a entidade em `SchedulingResponse`.
+5. As consultas por UUID ou por unidade/intervalo convertem a entidade em `AppointmentResponse`.
 
 ### Evolução do banco
 
-Com `spring.jpa.hibernate.ddl-auto=none`, o schema é responsabilidade do Flyway. Na inicialização, as migrations `V001` a `V005` criam clínica, usuários, pacientes e agendamentos. `spring.flyway.baseline-on-migrate=true` e `out-of-order=true` estão habilitados.
+Com `spring.jpa.hibernate.ddl-auto=none`, o schema é responsabilidade do Flyway. As migrations `V001` a `V008` formam o histórico de criação; a `V009` renomeia a estrutura legada de agendamentos para `APPOINTMENT` sem reescrever a migration já aplicada. `spring.flyway.baseline-on-migrate=true` e `out-of-order=true` estão habilitados.
 
 ## Padrões utilizados
 
@@ -142,9 +143,9 @@ Estas regras são impostas pelo código ou pelo banco atualmente:
 - Toda rota não liberada explicitamente exige autenticação.
 - Apenas a criação de paciente exige `ADMIN` em nível de método.
 
-Não há regra implementada que limite o acesso à clínica do usuário, valide transições de status, impeça choque de horários ou determine que um agendamento seja futuro.
+O fluxo de `Appointment` deriva a clínica do usuário autenticado, restringe os recursos relacionados ao tenant, exige início futuro e bloqueia conflitos de paciente/profissional e estouro de capacidade. Essas garantias ainda não são uniformes nos demais módulos, e não há transições de status.
 
-Como regra-alvo, tenant e autorização devem ser derivados da sessão; o cliente não escolhe a fronteira de segurança. As três invariantes de agenda — paciente sem sobreposição, profissional sem sobreposição e capacidade do serviço não excedida — não admitem exceção administrativa e precisam ser protegidas também contra concorrência.
+Como regra-alvo geral, tenant e autorização devem ser derivados da sessão; o cliente não escolhe a fronteira de segurança. No fluxo atual de criação, as três invariantes de agenda — paciente sem sobreposição, profissional sem sobreposição e capacidade do serviço não excedida — são verificadas sob bloqueio pessimista da clínica.
 
 ## Convenções técnicas observadas
 
@@ -155,7 +156,7 @@ Como regra-alvo, tenant e autorização devem ser derivados da sessão; o client
 - Datas e horas usam `LocalDateTime` e `LocalTime`, sem timezone no contrato.
 - Mappers são interfaces MapStruct injetáveis como beans Spring.
 - Repositories estendem `JpaRepository<Entidade, UUID>`.
-- Nomes de classes e código estão em inglês; mensagens, comentários e alguns nomes de pacote misturam português e inglês (`agendamento`/`scheduling`).
+- Nomes de classes e pacotes do módulo usam o vocabulário canônico `Appointment`/`appointment`; mensagens e comentários permanecem em português.
 - Algumas classes usam constructor injection, outras field injection. Não existe uma convenção única efetivamente aplicada.
 - Rotas misturam prefixos com e sem `/api` e verbos na URL (`/list`, `/save`, `/register`).
 
@@ -186,19 +187,19 @@ O sistema não possui adaptadores que permitam trocar MySQL, Spring Security ou 
 | Modelo acoplado a repositories | `CodeGeneratorListener` importa `ClinicRepository` e `PatientRepository` | Callback JPA depende do Spring e de estado estático |
 | Contrato HTTP acoplado a entidade | `LoginResponseDTO` contém `User`; `UserResponseDTO` contém `Clinic` | Mudanças JPA/serialização vazam para a API |
 | Segurança acoplada ao repository | `SecurityFilter` e `AuthorizationService` consultam `UserRepository` diretamente | Autenticação depende do modelo persistente concreto |
-| Agendamento acoplado a paciente | `SchedulingService` acessa `PatientRepository`; entidade tem `ManyToOne` | Não há fronteira autônoma para o módulo de agendamento |
+| Agendamento acoplado a cadastros | `AppointmentService` acessa repositories de paciente, unidade, serviço e profissional | Não há fronteira autônoma para o módulo de agendamento |
 | Paciente acoplado a clínica | DTO carrega `clinicId`; service acessa `ClinicRepository` | O chamador escolhe a clínica sem política central de escopo |
-| Enum de DTO acoplado ao modelo | Requests/responses importam `StatusScheduling` | Contrato externo muda junto ao enum persistente |
+| Enum de DTO acoplado ao modelo | Responses importam `AppointmentStatus` | Contrato externo muda junto ao enum persistente |
 
 ## Módulos órfãos ou parcialmente integrados
 
 - `ClinicService.createClinic` não possui controller nem chamada encontrada no código. A única clínica inicial é criada pela migration `V001`.
 - `PatientServiceInt` é implementada por `PatientService`, mas consumidores injetam a classe concreta; a interface não cria um limite real.
 - `ClinicRepository.findByUuid` não possui chamada ativa.
-- `SchedulingRepository.findById` apenas redeclara método já fornecido por `JpaRepository`.
+- `AppointmentRepository.findById` apenas redeclara método já fornecido por `JpaRepository`.
 - `UserMapper.INSTANCE` não é usado e duplica o modelo de acesso por bean Spring.
 - `UserResponseDTO` aparece como tipo declarado do cadastro, mas o endpoint devolve corpo vazio.
-- Não existem fluxos HTTP para criar/listar clínicas, atualizar/excluir pacientes, listar/alterar/cancelar agendamentos ou encerrar sessão.
+- Não existem fluxos HTTP para criar/listar clínicas, atualizar/excluir pacientes, alterar/cancelar agendamentos ou encerrar sessão.
 
 ## Riscos técnicos priorizados
 
@@ -208,7 +209,7 @@ O sistema não possui adaptadores que permitam trocar MySQL, Spring Security ou 
 2. **Ausência de isolamento por clínica:** listagens e buscas não usam a clínica do usuário. Um usuário autenticado pode consultar agendamentos por UUID e cadastrar agendamentos/pacientes para IDs de outras clínicas; `/patient/list` é público.
 3. **Elevação de privilégio no cadastro:** qualquer usuário autenticado pode chamar `/user/register/{clinicId}`, escolher qualquer clínica existente e enviar `role=ADMIN`.
 4. **Segredo no build:** o plugin Flyway no `pom.xml` contém usuário e senha literais. Além da exposição, esses valores divergem da configuração por ambiente usada pela aplicação.
-5. **Schema incompatível com o código:** `StatusScheduling` contém `ATENDENDO`, mas o `ENUM` criado em `V004` aceita somente `AGENDADO`, `CANCELADO` e `FINALIZADO`. Persistir `ATENDENDO` falha no MySQL.
+5. **Compatibilidade do rename no banco:** a `V008__create_table_scheduling.sql` é uma migration histórica imutável. A `V009` transforma a estrutura existente em `APPOINTMENT`, incluindo constraints e índices, sem alterar o checksum da V008.
 
 ### Altos
 
@@ -227,8 +228,8 @@ O sistema não possui adaptadores que permitam trocar MySQL, Spring Security ou 
 - O endpoint de cadastro declara `UserResponseDTO`, mas retorna HTTP 200 sem corpo.
 - `@CrossOrigin(origins = "http:localhost:3000")` está sem `//` no controller de autenticação e conflita com a configuração global correta.
 - `spring.jpa.show-sql=true` e loggers SQL em `DEBUG`/`TRACE` podem expor dados e gerar volume excessivo fora do desenvolvimento.
-- `dateScheduling` já contém data e hora, mas `hours` armazena outra hora sem validação de consistência.
-- Não há regras de choque de agenda, janela temporal, transição de status ou vínculo do agendamento à clínica autenticada.
+- `appointmentDate` já contém data e hora, mas `hours` armazena outra hora sem validação de consistência.
+- Ainda não há transições de status, remarcação, cancelamento, recorrência nem horizonte máximo de agendamento.
 - `Flyway` runtime e plugin Maven usam versões diferentes; `out-of-order=true` reduz a previsibilidade da sequência em ambientes compartilhados.
 - Injeção de dependência, caminhos REST, idioma de pacotes e estratégia de exceções são inconsistentes.
 
@@ -246,14 +247,14 @@ O sistema não possui adaptadores que permitam trocar MySQL, Spring Security ou 
 8. Validação de entrada deve ser declarativa e acompanhada de respostas de erro padronizadas por `@ControllerAdvice`.
 9. Escritas compostas devem ocorrer em services com fronteira `@Transactional` clara.
 10. Segredos devem vir do ambiente ou de secret manager; nunca do POM, código, imagem ou documentação.
-11. Novos módulos de negócio devem usar o vocabulário canônico definido nos requisitos; compatibilidade com `Clinic`, `Scheduling`, `USER`, `ATENDENDO` e `FINALIZADO` deve ser tratada explicitamente em migration e contrato.
+11. Novos módulos de negócio devem usar o vocabulário canônico definido nos requisitos; compatibilidade com `Clinic`, `USER`, `ATENDENDO` e `FINALIZADO` deve ser tratada explicitamente em migration e contrato.
 12. Nenhuma FK ou operação em cascata pode apagar agendamentos ou eventos de auditoria.
 
 ### Ordem de evolução sugerida
 
 1. Remover entidades das respostas e impedir exposição de senha.
 2. Corrigir cadastro de usuário, política de papéis e escopo por clínica.
-3. Alinhar `StatusScheduling` e o schema; tratar status default.
+3. Alinhar `AppointmentStatus` e o schema; tratar status default.
 4. Criar exceções de domínio e tratamento HTTP global.
 5. Introduzir testes de segurança, service, repository/migration e contratos dos endpoints.
 6. Remover dependências de repository dos controllers e do listener JPA.

@@ -14,13 +14,10 @@ Registrar somente dúvidas que permanecem depois da análise do backend, da docu
 ## Divergências já identificadas no legado
 
 - `Clinic` ainda não funciona como fronteira de segurança;
-- não existe `Unit`;
-- `Scheduling` não possui serviço, profissional, duração, preço, tenant ou unidade;
 - os estados atuais divergem dos estados canônicos;
 - não há recorrência, eventos de auditoria, remarcação nem cancelamento;
-- exclusão de paciente apaga agendamentos por cascade no banco;
 - respostas de usuário podem expor o modelo persistente e a senha derivada;
-- horários usam tipos sem fuso explícito.
+- o isolamento por tenant não é aplicado de forma uniforme fora do fluxo de `Appointment`.
 
 ## Rodadas da entrevista
 

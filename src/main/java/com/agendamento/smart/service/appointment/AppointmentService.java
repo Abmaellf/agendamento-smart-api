@@ -1,22 +1,22 @@
-package com.agendamento.smart.service.scheduling;
+package com.agendamento.smart.service.appointment;
 
 import com.agendamento.smart.controller.exception.DomainException;
-import com.agendamento.smart.dtos.agendamento.SchedulingRequest;
-import com.agendamento.smart.dtos.agendamento.SchedulingResponse;
-import com.agendamento.smart.dtos.agendamento.SchedulingResponse.ReferenceResponse;
+import com.agendamento.smart.dtos.appointment.AppointmentRequest;
+import com.agendamento.smart.dtos.appointment.AppointmentResponse;
+import com.agendamento.smart.dtos.appointment.AppointmentResponse.ReferenceResponse;
+import com.agendamento.smart.model.appointment.Appointment;
+import com.agendamento.smart.model.appointment.AppointmentStatus;
 import com.agendamento.smart.model.clinic.Clinic;
 import com.agendamento.smart.model.patient.Patient;
 import com.agendamento.smart.model.professional.Professional;
-import com.agendamento.smart.model.scheduling.Scheduling;
-import com.agendamento.smart.model.scheduling.StatusScheduling;
 import com.agendamento.smart.model.serviceoffering.ServiceOffering;
 import com.agendamento.smart.model.unit.ClinicUnit;
 import com.agendamento.smart.model.user.User;
 import com.agendamento.smart.model.user.UserRole;
+import com.agendamento.smart.repository.AppointmentRepository;
 import com.agendamento.smart.repository.ClinicRepository;
 import com.agendamento.smart.repository.PatientRepository;
 import com.agendamento.smart.repository.ProfessionalRepository;
-import com.agendamento.smart.repository.SchedulingRepository;
 import com.agendamento.smart.repository.ServiceOfferingRepository;
 import com.agendamento.smart.repository.UnitRepository;
 import lombok.RequiredArgsConstructor;
@@ -36,12 +36,12 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class SchedulingService {
+public class AppointmentService {
 
     private static final DateTimeFormatter INSTANT_WITH_MILLIS =
             new DateTimeFormatterBuilder().appendInstant(3).toFormatter();
 
-    private final SchedulingRepository schedulingRepository;
+    private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
     private final ClinicRepository clinicRepository;
     private final UnitRepository unitRepository;
@@ -49,13 +49,13 @@ public class SchedulingService {
     private final ProfessionalRepository professionalRepository;
 
     @Transactional
-    public SchedulingResponse create(SchedulingRequest request, User user, String idempotencyKey) {
+    public AppointmentResponse create(AppointmentRequest request, User user, String idempotencyKey) {
         UUID clinicId = user.getClinic().getId();
         Clinic clinic = clinicRepository.findByIdForUpdate(clinicId)
                 .orElseThrow(DomainException::tenantResourceNotFound);
 
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            Scheduling existing = schedulingRepository
+            Appointment existing = appointmentRepository
                     .findByClinicIdAndIdempotencyKey(clinicId, idempotencyKey)
                     .orElse(null);
             if (existing != null) return toResponse(existing);
@@ -75,8 +75,6 @@ public class SchedulingService {
                     "Não é possível criar agendamento no passado.",
                     HttpStatus.UNPROCESSABLE_ENTITY);
         }
-
-
 
         BigDecimal requestedPrice = request.price().setScale(2, RoundingMode.UNNECESSARY);
         boolean overridesDefaults =
@@ -99,7 +97,7 @@ public class SchedulingService {
         }
 
         Instant requestedEnd = request.startsAt().plusSeconds(request.durationMinutes() * 60L);
-        List<Scheduling> active = schedulingRepository.findAllByClinicIdAndStartsAtIsNotNull(clinicId).stream()
+        List<Appointment> active = appointmentRepository.findAllByClinicIdAndStartsAtIsNotNull(clinicId).stream()
                 .filter(this::isActive)
                 .toList();
 
@@ -108,7 +106,7 @@ public class SchedulingService {
                         && overlaps(existing, request.startsAt(), requestedEnd));
         if (patientConflict) {
             throw new DomainException(
-                    "PATIENT_SCHEDULE_CONFLICT",
+                    "PATIENT_APPOINTMENT_CONFLICT",
                     "O paciente já possui outro agendamento no intervalo.",
                     HttpStatus.CONFLICT);
         }
@@ -120,7 +118,7 @@ public class SchedulingService {
                             && overlaps(existing, request.startsAt(), requestedEnd));
             if (professionalConflict) {
                 throw new DomainException(
-                        "PROFESSIONAL_SCHEDULE_CONFLICT",
+                        "PROFESSIONAL_APPOINTMENT_CONFLICT",
                         "O profissional já possui outro agendamento no intervalo.",
                         HttpStatus.CONFLICT);
             }
@@ -139,40 +137,40 @@ public class SchedulingService {
         }
 
         LocalDateTime localStart = LocalDateTime.ofInstant(request.startsAt(), zoneId);
-        Scheduling scheduling = new Scheduling();
-        scheduling.setClinic(clinic);
-        scheduling.setUnit(unit);
-        scheduling.setPatient(patient);
-        scheduling.setService(service);
-        scheduling.setProfessional(professional);
-        scheduling.setStartsAt(request.startsAt());
-        scheduling.setTimeZone(unit.getTimeZone());
-        scheduling.setDurationMinutes(request.durationMinutes());
-        scheduling.setPrice(requestedPrice);
-        scheduling.setStatus(StatusScheduling.AGENDADO);
-        scheduling.setCreatedBy(user);
-        scheduling.setIdempotencyKey(normalizeIdempotencyKey(idempotencyKey));
-        scheduling.setPathology(List.of());
-        scheduling.setDateScheduling(localStart);
-        scheduling.setHours(localStart.toLocalTime());
-        scheduling.setVariant("primary");
+        Appointment appointment = new Appointment();
+        appointment.setClinic(clinic);
+        appointment.setUnit(unit);
+        appointment.setPatient(patient);
+        appointment.setService(service);
+        appointment.setProfessional(professional);
+        appointment.setStartsAt(request.startsAt());
+        appointment.setTimeZone(unit.getTimeZone());
+        appointment.setDurationMinutes(request.durationMinutes());
+        appointment.setPrice(requestedPrice);
+        appointment.setStatus(AppointmentStatus.AGENDADO);
+        appointment.setCreatedBy(user);
+        appointment.setIdempotencyKey(normalizeIdempotencyKey(idempotencyKey));
+        appointment.setPathology(List.of());
+        appointment.setAppointmentDate(localStart);
+        appointment.setHours(localStart.toLocalTime());
+        appointment.setVariant("primary");
 
-        return toResponse(schedulingRepository.saveAndFlush(scheduling));
+        return toResponse(appointmentRepository.saveAndFlush(appointment));
     }
 
     @Transactional(readOnly = true)
-    public SchedulingResponse findById(UUID id, User user) {
-        Scheduling scheduling = schedulingRepository.findByIdAndClinicId(id, user.getClinic().getId())
+    public AppointmentResponse findById(UUID id, User user) {
+        Appointment appointment = appointmentRepository.findByIdAndClinicId(id, user.getClinic().getId())
                 .orElseThrow(DomainException::tenantResourceNotFound);
-        return toResponse(scheduling);
+        return toResponse(appointment);
     }
 
     @Transactional(readOnly = true)
-    public List<SchedulingResponse> findAll(User user, UUID unitId, Instant from, Instant to) {
+    public List<AppointmentResponse> findAll(User user, UUID unitId, Instant from, Instant to) {
         UUID clinicId = user.getClinic().getId();
         unitRepository.findByIdAndClinicId(unitId, clinicId)
                 .orElseThrow(DomainException::tenantResourceNotFound);
-        return schedulingRepository
+        return appointmentRepository
                 .findAllByClinicIdAndUnitIdAndStartsAtGreaterThanEqualAndStartsAtLessThanOrderByStartsAtAsc(
                         clinicId, unitId, from, to)
                 .stream()
@@ -188,12 +186,12 @@ public class SchedulingService {
         return professional;
     }
 
-    private boolean isActive(Scheduling scheduling) {
-        return scheduling.getStatus() == StatusScheduling.AGENDADO
-                || scheduling.getStatus() == StatusScheduling.ATENDENDO;
+    private boolean isActive(Appointment appointment) {
+        return appointment.getStatus() == AppointmentStatus.AGENDADO
+                || appointment.getStatus() == AppointmentStatus.ATENDENDO;
     }
 
-    private boolean overlaps(Scheduling existing, Instant requestedStart, Instant requestedEnd) {
+    private boolean overlaps(Appointment existing, Instant requestedStart, Instant requestedEnd) {
         Instant existingEnd = existing.getStartsAt().plusSeconds(existing.getDurationMinutes() * 60L);
         return existing.getStartsAt().isBefore(requestedEnd) && existingEnd.isAfter(requestedStart);
     }
@@ -203,39 +201,39 @@ public class SchedulingService {
         return value.length() <= 120 ? value : value.substring(0, 120);
     }
 
-    private SchedulingResponse toResponse(Scheduling scheduling) {
-        ReferenceResponse professional = scheduling.getProfessional() == null
+    private AppointmentResponse toResponse(Appointment appointment) {
+        ReferenceResponse professional = appointment.getProfessional() == null
                 ? null
                 : new ReferenceResponse(
-                        scheduling.getProfessional().getId(), scheduling.getProfessional().getName());
-        ReferenceResponse service = scheduling.getService() == null
+                        appointment.getProfessional().getId(), appointment.getProfessional().getName());
+        ReferenceResponse service = appointment.getService() == null
                 ? null
-                : new ReferenceResponse(scheduling.getService().getId(), scheduling.getService().getName());
-        UUID tenantId = scheduling.getUnit() == null ? null : scheduling.getUnit().getTenantId();
+                : new ReferenceResponse(appointment.getService().getId(), appointment.getService().getName());
+        UUID tenantId = appointment.getUnit() == null ? null : appointment.getUnit().getTenantId();
 
-        return new SchedulingResponse(
-                scheduling.getId(),
+        return new AppointmentResponse(
+                appointment.getId(),
                 tenantId,
-                scheduling.getUnit() == null ? null : scheduling.getUnit().getId(),
-                new ReferenceResponse(scheduling.getPatient().getId(), scheduling.getPatient().getName()),
+                appointment.getUnit() == null ? null : appointment.getUnit().getId(),
+                new ReferenceResponse(appointment.getPatient().getId(), appointment.getPatient().getName()),
                 service,
                 professional,
-                scheduling.getStartsAt() == null
+                appointment.getStartsAt() == null
                         ? null
-                        : INSTANT_WITH_MILLIS.format(scheduling.getStartsAt()),
-                scheduling.getTimeZone(),
-                scheduling.getDurationMinutes(),
-                scheduling.getPrice() == null
+                        : INSTANT_WITH_MILLIS.format(appointment.getStartsAt()),
+                appointment.getTimeZone(),
+                appointment.getDurationMinutes(),
+                appointment.getPrice() == null
                         ? null
-                        : scheduling.getPrice().setScale(2, RoundingMode.UNNECESSARY),
-                scheduling.getStatus(),
-                scheduling.getCreatedBy() == null ? null : scheduling.getCreatedBy().getId(),
-                scheduling.getCreatedAt(),
-                scheduling.getPatient().getId(),
-                scheduling.getPathology(),
-                scheduling.getDateScheduling(),
-                scheduling.getHours(),
-                scheduling.getVariant(),
-                scheduling.getUpdatedAt());
+                        : appointment.getPrice().setScale(2, RoundingMode.UNNECESSARY),
+                appointment.getStatus(),
+                appointment.getCreatedBy() == null ? null : appointment.getCreatedBy().getId(),
+                appointment.getCreatedAt(),
+                appointment.getPatient().getId(),
+                appointment.getPathology(),
+                appointment.getAppointmentDate(),
+                appointment.getHours(),
+                appointment.getVariant(),
+                appointment.getUpdatedAt());
     }
 }

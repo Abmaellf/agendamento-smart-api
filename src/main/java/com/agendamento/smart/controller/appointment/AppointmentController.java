@@ -1,10 +1,10 @@
-package com.agendamento.smart.controller.scheduling;
+package com.agendamento.smart.controller.appointment;
 
-import com.agendamento.smart.dtos.agendamento.SchedulingRequest;
-import com.agendamento.smart.dtos.agendamento.SchedulingResponse;
+import com.agendamento.smart.dtos.appointment.AppointmentRequest;
+import com.agendamento.smart.dtos.appointment.AppointmentResponse;
 import com.agendamento.smart.dtos.catalog.CatalogResponse;
 import com.agendamento.smart.model.user.User;
-import com.agendamento.smart.service.scheduling.SchedulingService;
+import com.agendamento.smart.service.appointment.AppointmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,22 +23,22 @@ import java.time.Instant;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/scheduling")
+@RequestMapping("/api/appointments")
 @RequiredArgsConstructor
-public class SchedulingController {
+public class AppointmentController {
 
-    private final SchedulingService service;
+    private final AppointmentService service;
 
     @PostMapping
-    public ResponseEntity<SchedulingResponse> create(
-            @Valid @RequestBody SchedulingRequest request,
+    public ResponseEntity<AppointmentResponse> create(
+            @Valid @RequestBody AppointmentRequest request,
             @AuthenticationPrincipal User user,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request, user, idempotencyKey));
     }
 
     @GetMapping
-    public CatalogResponse<SchedulingResponse> findAll(
+    public CatalogResponse<AppointmentResponse> findAll(
             @AuthenticationPrincipal User user,
             @RequestParam UUID unitId,
             @RequestParam Instant from,
@@ -47,7 +47,7 @@ public class SchedulingController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<SchedulingResponse> findById(
+    public ResponseEntity<AppointmentResponse> findById(
             @PathVariable UUID id,
             @AuthenticationPrincipal User user) {
         return ResponseEntity.ok(service.findById(id, user));

@@ -6,38 +6,40 @@ Orquestrar criação e consulta de agendamentos.
 
 ## Responsabilidades principais
 
-- Resolver o paciente informado no request.
-- Mapear request para entidade e associar o paciente.
-- Persistir agendamento.
-- Consultar por UUID e mapear a resposta.
+- Resolver paciente, unidade, serviço e profissional opcional dentro do tenant autenticado.
+- Validar data futura, disponibilidade, sobreposições, capacidade, duração e preço.
+- Construir e persistir o agendamento com autoria e idempotência.
+- Listar por unidade/intervalo ou consultar por UUID e mapear a resposta.
 
 ## Funcionalidades existentes
 
-- `create(SchedulingRequest)`.
+- `create(AppointmentRequest)`.
+- `findAll(User, UUID, Instant, Instant)`.
 - `findById(UUID)`.
 
 ## Dependências internas e externas
 
-- Internas: `SchedulingRepository`, `PatientRepository`, `SchedulingMapper`, entidades e DTOs.
+- Internas: `AppointmentRepository`, repositories dos recursos relacionados, entidades e DTOs.
 - Externas: Spring Service e Lombok.
 
 ## Módulos relacionados
 
-`controller/scheduling`, `dtos/agendamento`, `model/scheduling`, `model/patient`, `mapper` e `repository`.
+`controller/appointment`, `dtos/appointment`, `model/appointment`, `model/patient` e `repository`.
 
 ## Pontos de entrada
 
-- `POST /api/scheduling` chama `create`.
-- `GET /api/scheduling/{id}` chama `findById`.
+- `POST /api/appointments` chama `create`.
+- `GET /api/appointments` chama `findAll`.
+- `GET /api/appointments/{id}` chama `findById`.
 
 ## Fluxos de entrada
 
-- Criação: request -> busca de paciente -> mapper -> associação -> save -> mapper de resposta.
-- Consulta: UUID -> repository -> mapper de resposta.
+- Criação: request -> resolução dos recursos do tenant -> associação -> save -> resposta.
+- Consulta: filtros ou UUID -> repository -> conversão manual de resposta.
 
 ## Arquivos críticos
 
-- `SchedulingService.java`.
+- `AppointmentService.java`.
 
 ## Regras confirmadas para evolução do módulo
 
@@ -52,9 +54,6 @@ Orquestrar criação e consulta de agendamentos.
 
 ## Observações técnicas e débitos identificados
 
-- Não há validação de clínica, papel, conflito de horário, data futura ou transição de status.
-- O service aceita qualquer paciente existente, independentemente da clínica do usuário.
-- Não há `@Transactional` explícito na operação composta de busca e gravação.
-- Exceções de ausência são `IllegalArgumentException`, sem tratamento HTTP padronizado.
-- A ausência de status no request pode gerar entidade com status nulo por comportamento do mapper.
+- A criação serializa operações por clínica para proteger conflitos e capacidade, o que limita paralelismo dentro do mesmo tenant.
+- Ainda não há comandos de transição de status, remarcação, cancelamento ou recorrência.
 - O subpacote separa agendamento dos demais services, mas não constitui módulo isolado: depende diretamente de paciente e repositories compartilhados.

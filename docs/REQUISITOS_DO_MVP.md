@@ -31,12 +31,12 @@ Todo registro de negócio deve possuir `tenantId`, `createdAt` e `updatedAt`; co
 | Conceito canônico | Nome atual no backend | Direção aprovada |
 |---|---|---|
 | `Tenant`/clínica-conta | `Clinic` | `Clinic` passa a representar explicitamente o tenant; unidade física será `Unit` |
-| `Appointment` | `Scheduling` | contratos novos usam o conceito de agendamento/appointment de forma consistente |
+| `Appointment` | `Appointment` | vocabulário adotado de forma consistente nos contratos e no domínio |
 | `BASIC` | `USER` | perfil operacional básico, sem permissão de cancelamento |
 | `EM_ATENDIMENTO` | `ATENDENDO` | usar o estado canônico |
 | `CONCLUIDO` | `FINALIZADO` | usar o estado canônico |
 
-Os nomes legados continuam sendo descrição do código atual até uma refatoração acompanhada de migration e compatibilidade de contrato.
+O nome anterior permanece apenas no histórico imutável do Flyway (`V008__create_table_scheduling.sql` e `R__008_seed_scheduling.sql`); a `V009` faz a transição compatível para `APPOINTMENT`. Código e contratos correntes usam `Appointment`.
 
 ## Perfis e permissões
 

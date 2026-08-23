@@ -1,6 +1,6 @@
-package com.agendamento.smart.dtos.agendamento;
+package com.agendamento.smart.dtos.appointment;
 
-import com.agendamento.smart.model.scheduling.StatusScheduling;
+import com.agendamento.smart.model.appointment.AppointmentStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -9,7 +9,7 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
-public record SchedulingResponse(
+public record AppointmentResponse(
         UUID id,
         UUID tenantId,
         UUID unitId,
@@ -20,12 +20,12 @@ public record SchedulingResponse(
         String timeZone,
         Integer durationMinutes,
         BigDecimal price,
-        StatusScheduling status,
+        AppointmentStatus status,
         UUID createdBy,
         Instant createdAt,
         UUID patientId,
         List<String> pathology,
-        LocalDateTime dateScheduling,
+        LocalDateTime appointmentDate,
         LocalTime hours,
         String variant,
         Instant updatedAt
