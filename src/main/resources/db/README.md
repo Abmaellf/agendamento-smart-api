@@ -10,7 +10,7 @@ Agrupar os recursos de evolução do banco carregados pelo classpath.
 
 ## Funcionalidades existentes
 
-- Cinco migrations versionadas para o schema MySQL.
+- Nove migrations versionadas para o schema MySQL e seeds repetíveis de desenvolvimento.
 
 ## Dependências internas e externas
 
@@ -31,7 +31,8 @@ Classpath -> Flyway -> migrations pendentes -> schema MySQL.
 
 ## Arquivos críticos
 
-- `migration/V001__create_table_clinic.sql` até `migration/V005__alter_scheduling.sql`.
+- `migration/V001__create_table_clinic.sql` até a `V009`, responsável pelo rename compatível para `APPOINTMENT`.
+- `seed/dev/R__001_seed_clinic.sql` até a seed histórica `seed/dev/R__008_seed_scheduling.sql`.
 
 ## Regras confirmadas para evolução do módulo
 

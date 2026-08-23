@@ -25,12 +25,12 @@ Representar um paciente pertencente a uma clínica.
 
 ## Módulos relacionados
 
-`service/PatientService`, `repository`, `mapper`, `model/scheduling` e migration `V003`.
+`service/PatientService`, `repository`, `mapper`, `model/appointment` e migration `V003`.
 
 ## Pontos de entrada
 
 - Criação e listagem por `PatientService`.
-- Consulta por `SchedulingService` ao criar agendamento.
+- Consulta por `AppointmentService` ao criar agendamento.
 
 ## Fluxos de entrada
 

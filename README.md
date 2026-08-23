@@ -66,7 +66,7 @@ Serviços:
 - MySQL: `localhost:3306`;
 - front-end irmão: `http://localhost:3000` quando iniciado com `npm run dev -- --host 0.0.0.0`.
 
-A migration `V004__create_scheduling.sql` cria os catálogos, evolui `SCHEDULING` e fornece a seed determinística das coleções Postman. Essas coleções persistem dados e alteram o serviço mutável. Para repeti-las integralmente, use uma base descartável e restaure a seed. O comando seguinte remove **somente o volume Docker deste Compose** e não deve ser usado quando houver dados locais a preservar:
+As migrations até `V008__create_table_scheduling.sql` formam o histórico legado que cria os catálogos e a antiga tabela de agendamentos. A `V009` preserva esse histórico e renomeia a estrutura para `APPOINTMENT`; a seed repetível histórica `R__008_seed_scheduling.sql` continua compatível com o Flyway. Essas coleções persistem dados e alteram o serviço mutável. Para repeti-las integralmente, use uma base descartável e restaure a seed. O comando seguinte remove **somente o volume Docker deste Compose** e não deve ser usado quando houver dados locais a preservar:
 
 ```bash
 docker compose down -v

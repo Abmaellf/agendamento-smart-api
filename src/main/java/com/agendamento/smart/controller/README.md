@@ -15,7 +15,7 @@ Agrupar adaptadores HTTP e hospedar o endpoint técnico de diagnóstico do banco
 
 ## Dependências internas e externas
 
-- Internas: subpacotes `auth`, `info`, `patient`, `scheduling` e `user`.
+- Internas: subpacotes `appointment`, `auth`, `info`, `patient` e `user`.
 - Externas: Spring MVC e `JdbcTemplate`.
 
 ## Módulos relacionados

@@ -56,7 +56,7 @@ Header/cookie -> `SecurityFilter` -> validação do JWT -> consulta de usuário 
 ## Observações técnicas e débitos identificados
 
 - A regra pública `/auth/register/**` não corresponde ao cadastro real `/user/register/{clinicId}`.
-- A regra `GET /api/scheduling` não corresponde à consulta `GET /api/scheduling/{id}`.
+- A regra `GET /api/appointments` protege a listagem; `GET /api/appointments/{id}` também permanece autenticada pela regra padrão.
 - Não há autorização por clínica; o filtro carrega a clínica, mas nenhuma regra a utiliza.
 - Se header e cookie estiverem presentes, o cookie prevalece sem explicitar essa política.
 - Token inválido retorna subject vazio e ainda provoca busca por login vazio.

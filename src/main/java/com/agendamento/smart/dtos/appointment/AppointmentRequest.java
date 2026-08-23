@@ -1,4 +1,4 @@
-package com.agendamento.smart.dtos.agendamento;
+package com.agendamento.smart.dtos.appointment;
 
 import jakarta.validation.constraints.*;
 
@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
-public record SchedulingRequest(
+public record AppointmentRequest(
         @NotNull UUID patientId,
         @NotNull UUID unitId,
         @NotNull UUID serviceId,

@@ -1,4 +1,4 @@
-package com.agendamento.smart.model.scheduling;
+package com.agendamento.smart.model.appointment;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

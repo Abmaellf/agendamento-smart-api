@@ -6,14 +6,14 @@ Representar um agendamento de paciente e converter a lista de patologias entre J
 
 ## Responsabilidades principais
 
-- Mapear a tabela `SCHEDULING`.
+- Mapear a tabela `APPOINTMENT`.
 - Relacionar obrigatoriamente o agendamento a `Patient`.
 - Persistir patologias em coluna JSON.
 - Representar status e timestamps de criação/atualização.
 
 ## Funcionalidades existentes
 
-- Entidade `Scheduling`.
+- Entidade `Appointment`.
 - Status Java `AGENDADO`, `ATENDENDO`, `CANCELADO` e `FINALIZADO`.
 - `StringListJsonConverter` para `List<String>`.
 - Atualização de `updatedAt` por `@PreUpdate`.
@@ -25,22 +25,22 @@ Representar um agendamento de paciente e converter a lista de patologias entre J
 
 ## Módulos relacionados
 
-`controller/scheduling`, `service/scheduling`, `repository`, `mapper`, DTOs de agendamento e migrations `V004`/`V005`.
+`controller/appointment`, `service/appointment`, `repository`, DTOs de agendamento e migrations `V008`/`V009`.
 
 ## Pontos de entrada
 
-- Construção pelo `SchedulingMapper` no fluxo de criação.
+- Construção pelo `AppointmentService` no fluxo de criação.
 - Materialização pelo JPA no fluxo de consulta.
 - Conversor chamado pelo provedor JPA ao gravar/ler `pathology`.
 
 ## Fluxos de entrada
 
-Request -> mapper -> associação do paciente -> entidade -> conversor JSON -> MySQL; caminho inverso na consulta.
+Request -> service -> associações de domínio -> entidade -> conversor JSON -> MySQL; caminho inverso na consulta.
 
 ## Arquivos críticos
 
-- `Scheduling.java`.
-- `StatusScheduling.java`.
+- `Appointment.java`.
+- `AppointmentStatus.java`.
 - `StringListJsonConverter.java`.
 
 ## Regras confirmadas para evolução do módulo
@@ -52,14 +52,13 @@ Request -> mapper -> associação do paciente -> entidade -> conversor JSON -> M
 - Ocorrências recorrentes são independentes e ligadas a `AppointmentSeries`.
 - Remarcação mantém o original como `REMARCADO`, cria um novo registro vinculado e audita autor, instante e motivo. Cancelamento também é auditável.
 - `AppointmentEvent` preserva o histórico e nenhuma FK pode apagar agendamento/evento em cascata.
-- `pathology` e `variant` não fazem parte do modelo mínimo confirmado; `dateScheduling` + `hours` deve ser substituído por uma representação temporal única.
+- `pathology` e `variant` não fazem parte do modelo mínimo confirmado; `appointmentDate` + `hours` deve ser substituído por uma representação temporal única.
 
 ## Observações técnicas e débitos identificados
 
-- `ATENDENDO` não existe no `ENUM` MySQL criado por `V004`; seu uso falha na persistência.
-- O mapper pode definir status nulo e remover o default `AGENDADO`.
-- `dateScheduling` e `hours` podem representar horas diferentes e não há validação.
-- Não existem regras de transição de status, conflito, duração ou data futura.
+- A evolução de `AppointmentStatus` para todos os estados canônicos exige migration compatível com registros existentes.
+- `appointmentDate` e `hours` podem representar horas diferentes e não há validação.
+- Não existem regras ou comandos de transição de status; conflitos, duração e data futura são validados na criação pelo service.
 - O conversor desserializa `List.class` sem tipo genérico explícito e descarta a causa original ao lançar `IllegalArgumentException`.
 - Timestamps são inicializados pela aplicação e também possuem defaults na migration; não há uma fonte temporal única declarada.
-- A migration apaga agendamentos ao excluir paciente (`ON DELETE CASCADE`).
+- As FKs de `APPOINTMENT` usam exclusão restritiva para preservar o histórico.

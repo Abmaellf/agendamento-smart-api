@@ -1,5 +1,5 @@
 -- Seed exclusivo para desenvolvimento e demonstração.
--- O Instant é persistido em UTC; date_scheduling e hours representam o
+-- O Instant é persistido em UTC; appointment_date e hours representam o
 -- horário local da unidade America/Cuiaba (-04:00).
 
 SET @previous_session_time_zone = @@SESSION.time_zone;
@@ -37,7 +37,7 @@ SET @clinic_current_date = DATE(
     CONVERT_TZ(UTC_TIMESTAMP(6), '+00:00', '-04:00')
 );
 
-INSERT INTO SCHEDULING (
+INSERT INTO APPOINTMENT (
     id,
     patient_id,
     clinic_id,
@@ -51,7 +51,7 @@ INSERT INTO SCHEDULING (
     price,
     idempotency_key,
     pathology,
-    date_scheduling,
+    appointment_date,
     hours,
     status,
     variant,
@@ -76,7 +76,7 @@ VALUES
         'America/Cuiaba',
         60,
         150.00,
-        'dev-seed-scheduling-0001',
+        'dev-seed-appointment-0001',
         JSON_ARRAY(),
         TIMESTAMP(DATE_ADD(@clinic_current_date, INTERVAL 1 DAY), '08:30:00'),
         '08:30:00',
@@ -102,7 +102,7 @@ VALUES
         'America/Cuiaba',
         60,
         150.00,
-        'dev-seed-scheduling-0002',
+        'dev-seed-appointment-0002',
         JSON_ARRAY(),
         TIMESTAMP(DATE_ADD(@clinic_current_date, INTERVAL 2 DAY), '09:30:00'),
         '09:30:00',
@@ -128,7 +128,7 @@ VALUES
         'America/Cuiaba',
         60,
         150.00,
-        'dev-seed-scheduling-0003',
+        'dev-seed-appointment-0003',
         JSON_ARRAY(),
         TIMESTAMP(DATE_ADD(@clinic_current_date, INTERVAL 3 DAY), '10:00:00'),
         '10:00:00',
@@ -154,7 +154,7 @@ VALUES
         'America/Cuiaba',
         60,
         150.00,
-        'dev-seed-scheduling-0004',
+        'dev-seed-appointment-0004',
         JSON_ARRAY(),
         TIMESTAMP(DATE_ADD(@clinic_current_date, INTERVAL 4 DAY), '14:00:00'),
         '14:00:00',
@@ -180,7 +180,7 @@ VALUES
         'America/Cuiaba',
         60,
         150.00,
-        'dev-seed-scheduling-0005',
+        'dev-seed-appointment-0005',
         JSON_ARRAY(),
         TIMESTAMP(DATE_ADD(@clinic_current_date, INTERVAL 5 DAY), '16:00:00'),
         '16:00:00',
@@ -206,7 +206,7 @@ VALUES
         'America/Cuiaba',
         60,
         150.00,
-        'dev-seed-scheduling-0006',
+        'dev-seed-appointment-0006',
         JSON_ARRAY(),
         TIMESTAMP(DATE_SUB(@clinic_current_date, INTERVAL 1 DAY), '08:30:00'),
         '08:30:00',
