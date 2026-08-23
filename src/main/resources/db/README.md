@@ -14,7 +14,7 @@ Agrupar os recursos de evolução do banco carregados pelo classpath.
 
 ## Dependências internas e externas
 
-- Internas: `application.properties` aponta para `classpath:db/migration`.
+- Internas: `application.old` aponta para `classpath:db/migration`.
 - Externas: Flyway e MySQL.
 
 ## Módulos relacionados

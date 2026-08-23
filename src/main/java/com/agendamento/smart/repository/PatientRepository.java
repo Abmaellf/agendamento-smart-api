@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -19,6 +20,10 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
     Optional<Long> findMaxCode();
 
     Optional<Patient> findByName(String name);
+
+    List<Patient> findAllByClinicId(UUID clinicId);
+
+    Optional<Patient> findByIdAndClinicId(UUID id, UUID clinicId);
 
         /* @Query(value = "SELECT * FROM tb_book WHERE publisher_id = :id", nativeQuery = true)
         List<Patient> findPatientByClinicId(@Param("id") String id); */

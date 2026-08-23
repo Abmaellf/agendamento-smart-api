@@ -1,0 +1,81 @@
+server:
+  port: 8080
+
+
+spring:
+
+  # ============================================================
+  # DATABASE
+  # ============================================================
+  datasource:
+    url: ${AGENDA_URL}
+    username: ${AGENDA_DB_USER}
+    password: ${AGENDA_DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+
+  # ============================================================
+  # JPA / HIBERNATE
+  # ============================================================
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    show-sql: true
+
+    hibernate:
+      ddl-auto: none
+
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+
+    properties:
+      hibernate:
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+
+  # ============================================================
+  # FLYWAY
+  # ============================================================
+  flyway:
+    enabled: true
+    locations:
+      - classpath:db/migration
+      - classpath:db/seed/dev
+    baseline-on-migrate: true
+    out-of-order: true
+
+  # defer-datasource-initialization: true
+
+
+# ============================================================
+# SECURITY
+# ============================================================
+api:
+  security:
+    token:
+      secret: ${JWT_SECRET:my-secret-key}
+
+
+# ============================================================
+# PROJECT
+# ============================================================
+project:
+  version: "@project.version@"
+
+
+# ============================================================
+# LOGGING
+# ============================================================
+logging:
+  level:
+    org:
+      hibernate:
+        SQL: DEBUG
+        type:
+          descriptor:
+            sql: TRACE
+
+      springframework:
+        jdbc:
+          core: DEBUG

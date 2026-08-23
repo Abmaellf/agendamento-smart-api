@@ -3578,7 +3578,7 @@
   "wrapperChecksumUrl" : "https://services.gradle.org/distributions/gradle-4.10.1-wrapper.jar.sha256"
 }, {
   "version" : "4.10",
-  "buildTime" : "20180827183506+0000",
+  "buildTime" : "20180807183506+0000",
   "current" : false,
   "snapshot" : false,
   "nightly" : false,
@@ -3592,7 +3592,7 @@
   "wrapperChecksumUrl" : "https://services.gradle.org/distributions/gradle-4.10-wrapper.jar.sha256"
 }, {
   "version" : "4.10-rc-3",
-  "buildTime" : "20180823120756+0000",
+  "buildTime" : "20180803120756+0000",
   "current" : false,
   "snapshot" : false,
   "nightly" : false,

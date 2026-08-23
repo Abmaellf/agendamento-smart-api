@@ -1,17 +1,21 @@
 package com.agendamento.smart.dtos.agendamento;
-import com.agendamento.smart.model.scheduling.StatusScheduling;
-import jakarta.validation.constraints.NotNull;
 
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.List;
+import jakarta.validation.constraints.*;
+
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 public record SchedulingRequest(
         @NotNull UUID patientId,
-        @NotNull List<String> pathology,
-        @NotNull LocalDateTime dateScheduling,
-        @NotNull LocalTime hours,
-        StatusScheduling status,
-        String variant
-) {}
+        @NotNull UUID unitId,
+        @NotNull UUID serviceId,
+        UUID professionalId,
+        @NotNull Instant startsAt,
+        @NotNull @Min(1) @Max(480) Integer durationMinutes,
+        @NotNull
+        @PositiveOrZero
+        @Digits(integer = 8, fraction = 2)
+        BigDecimal price
+) {
+}

@@ -25,7 +25,7 @@ Versionar o schema MySQL utilizado pela API.
 
 ## Módulos relacionados
 
-`model/clinic`, `model/user`, `model/patient`, `model/scheduling`, `repository` e `application.properties`.
+`model/clinic`, `model/user`, `model/patient`, `model/scheduling`, `repository` e `application.old`.
 
 ## Pontos de entrada
 

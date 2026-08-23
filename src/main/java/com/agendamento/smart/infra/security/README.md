@@ -60,7 +60,7 @@ Header/cookie -> `SecurityFilter` -> validação do JWT -> consulta de usuário 
 - Não há autorização por clínica; o filtro carrega a clínica, mas nenhuma regra a utiliza.
 - Se header e cookie estiverem presentes, o cookie prevalece sem explicitar essa política.
 - Token inválido retorna subject vazio e ainda provoca busca por login vazio.
-- O segredo possui default em `application.properties`.
+- O segredo possui default em `application.old`.
 - Expiração do JWT usa offset fixo `-04:00`; o cookie dura uma hora e o JWT duas.
 - Cookie de login usa `secure=false`, inclusive quando acessado pela origem de produção configurada.
 - A injeção por campo contrasta com a convenção de construtor recomendada.

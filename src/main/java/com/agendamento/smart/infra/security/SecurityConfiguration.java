@@ -42,6 +42,7 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
 //                    .requestMatchers(HttpMethod.GET, "/debug/db").permitAll()
                     .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.GET, "/patient/list").permitAll()
 //                    .requestMatchers(HttpMethod.GET, "/patient/list").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/api/scheduling").hasAnyRole("ADMIN", "USER")
@@ -58,7 +59,9 @@ public class SecurityConfiguration {
         // Domínios permitidos
         config.setAllowedOrigins(List.of(
                 "https://agendamentos-smart.vercel.app",
-                "http://localhost:3000" // opcional para dev
+                "https://agendamentos-smart.vercel.app/*",
+                "http://localhost:3000",
+                "http://localhost:5173"
         ));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));

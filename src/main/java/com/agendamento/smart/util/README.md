@@ -20,7 +20,7 @@ Representar propriedades técnicas do projeto disponibilizadas pelo Spring.
 
 ## Módulos relacionados
 
-`service`, `controller/info`, `application.properties` e plugin Spring Boot Maven.
+`service`, `controller/info`, `application.old` e plugin Spring Boot Maven.
 
 ## Pontos de entrada
 

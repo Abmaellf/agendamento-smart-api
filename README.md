@@ -48,7 +48,45 @@ A clínica representa o tenant e será a fronteira de segurança. O modelo-alvo 
 
 O MVP bloqueia, sem exceção, sobreposição do mesmo paciente, sobreposição do mesmo profissional e capacidade excedida do serviço. Agendamentos preservam duração e preço aplicados, nunca são excluídos e usam os estados `AGENDADO`, `CONFIRMADO`, `EM_ATENDIMENTO`, `CONCLUIDO`, `CANCELADO`, `FALTA` e `REMARCADO`.
 
-O backend atual ainda não implementa a maior parte dessas regras. As decisões restantes estão sendo fechadas na entrevista técnica e de produto.
+O backend implementa a criação manual de agendamento com unidade, serviço, profissional opcional, snapshots de duração/preço, autoria e estado inicial. A confirmação é serializada por clínica para impedir conflitos de paciente/profissional e estouro de capacidade, inclusive na disputa concorrente pela última vaga; `Idempotency-Key` protege confirmações duplicadas. Recorrência e as demais transições de estado continuam fora dessa entrega.
+
+## Ambiente local integrado validado
+
+O ambiente usado pelos testes da agenda manual é iniciado na raiz deste repositório:
+
+```bash
+docker compose up -d --build
+docker compose ps
+docker compose logs -f api
+```
+
+Serviços:
+
+- API: `http://localhost:8080`;
+- MySQL: `localhost:3306`;
+- front-end irmão: `http://localhost:3000` quando iniciado com `npm run dev -- --host 0.0.0.0`.
+
+A migration `V004__create_scheduling.sql` cria os catálogos, evolui `SCHEDULING` e fornece a seed determinística das coleções Postman. Essas coleções persistem dados e alteram o serviço mutável. Para repeti-las integralmente, use uma base descartável e restaure a seed. O comando seguinte remove **somente o volume Docker deste Compose** e não deve ser usado quando houver dados locais a preservar:
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+Se uma tentativa anterior de criação deixar apenas a API fora da rede `backend`, preserve o volume e recrie só o contêiner efêmero:
+
+```bash
+docker compose stop api
+docker compose up -d --force-recreate api
+```
+
+Validação rápida:
+
+```bash
+./mvnw test
+```
+
+O roteiro completo de caixa branca e Postman está no front-end, em `specs/001-criar-agendamento-manual/como-executar-testes.md`.
 
 ## Instrução de instalação
 
@@ -78,7 +116,7 @@ cfaf466bca10   mysql:8.0   "docker-entrypoint.s…"   26 seconds ago   Up 26 sec
 mvn spring-boot:run
 
 2025-08-02T14:49:34.223-04:00  INFO 23583 --- [  restartedMain] o.s.b.d.a.OptionalLiveReloadServer       : LiveReload server is running on port 35729
-2025-08-02T14:49:34.265-04:00  INFO 23583 --- [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8082 (http) with context path '/'
+2025-08-02T14:49:34.265-04:00  INFO 23583 --- [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
 2025-08-02T14:49:34.282-04:00  INFO 23583 --- [  restartedMain] c.a.smart.AgendaSmartApplication         : Started AgendaSmartApplication in 7.559 seconds (process running for 8.179)
 ```
 

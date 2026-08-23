@@ -4,8 +4,10 @@ import com.agendamento.smart.dtos.AuthenticationDTO;
 import com.agendamento.smart.dtos.LoginResponseDTO;
 import com.agendamento.smart.infra.security.TokenService;
 import com.agendamento.smart.model.user.User;
+import com.agendamento.smart.model.user.dto.UserProfileResponse;
 import com.agendamento.smart.repository.UserRepository;
 import com.agendamento.smart.service.UserService;
+import com.agendamento.smart.repository.UnitRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -20,9 +22,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
-//@CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
-@CrossOrigin(origins = "http:localhost:3000")
+@CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
 @RestController
 @RequestMapping("auth")
 @AllArgsConstructor
@@ -33,9 +36,9 @@ public class AuthenticationController {
     private final UserRepository userRepository;
     private final TokenService tokenService;
     private final UserService userService;
+    private final UnitRepository unitRepository;
 
-//    @CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
-    @CrossOrigin(origins = "http:localhost:3000")
+    @CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(@RequestBody @Valid AuthenticationDTO data,
                                                   HttpServletResponse response){
@@ -69,8 +72,8 @@ public class AuthenticationController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<User> me(Authentication authentication){
-        User user = userService.currentUserService(authentication);
-        return ResponseEntity.ok(user);
+    public ResponseEntity<UserProfileResponse> me(Authentication authentication){
+        UserProfileResponse profile = userService.getUserProfile(authentication);
+        return ResponseEntity.ok(profile);
     }
 }

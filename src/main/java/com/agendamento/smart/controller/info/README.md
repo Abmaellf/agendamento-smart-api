@@ -20,7 +20,7 @@ Expor a versão do artefato em execução.
 
 ## Módulos relacionados
 
-`util`, `service`, `application.properties` e execução do goal `spring-boot:build-info` no Maven.
+`util`, `service`, `application.old` e execução do goal `spring-boot:build-info` no Maven.
 
 ## Pontos de entrada
 

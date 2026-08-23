@@ -1,0 +1,27 @@
+-- Seed exclusivo para desenvolvimento e demonstração.
+INSERT INTO PROFESSIONAL_SERVICE (
+    professional_id,
+    service_id
+)
+VALUES
+    (
+        UNHEX(REPLACE('30000000-0000-4000-8000-000000000001', '-', '')),
+        UNHEX(REPLACE('40000000-0000-4000-8000-000000000001', '-', ''))
+    ),
+    (
+        UNHEX(REPLACE('30000000-0000-4000-8000-000000000001', '-', '')),
+        UNHEX(REPLACE('40000000-0000-4000-8000-000000000002', '-', ''))
+    ),
+    (
+        UNHEX(REPLACE('30000000-0000-4000-8000-000000000001', '-', '')),
+        UNHEX(REPLACE('40000000-0000-4000-8000-000000000003', '-', ''))
+    ),
+    (
+        UNHEX(REPLACE('30000000-0000-4000-8000-000000000002', '-', '')),
+        UNHEX(REPLACE('40000000-0000-4000-8000-000000000001', '-', ''))
+    ),
+    (
+        UNHEX(REPLACE('30000000-0000-4000-8000-000000000002', '-', '')),
+        UNHEX(REPLACE('40000000-0000-4000-8000-000000000003', '-', ''))
+    )
+ON DUPLICATE KEY UPDATE professional_id = professional_id;

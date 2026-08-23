@@ -149,7 +149,7 @@ O ciclo-alvo confirmado usa `AGENDADO`, `CONFIRMADO`, `EM_ATENDIMENTO`, `CONCLUI
 ## Contexto operacional
 
 - Aplicação Java 21/Spring Boot executada como JAR único.
-- Porta HTTP fixa `8082` na configuração da aplicação.
+- Porta HTTP fixa `8080` na configuração da aplicação.
 - Banco MySQL; o Compose usa MySQL 8.0 com volume persistente.
 - Schema gerenciado pelo Flyway na inicialização.
 - Configuração de conexão por `AGENDA_URL`, `AGENDA_DB_USER` e `AGENDA_DB_PASSWORD`.

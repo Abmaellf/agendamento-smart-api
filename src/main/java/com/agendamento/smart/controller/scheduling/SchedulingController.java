@@ -1,30 +1,55 @@
 package com.agendamento.smart.controller.scheduling;
+
 import com.agendamento.smart.dtos.agendamento.SchedulingRequest;
 import com.agendamento.smart.dtos.agendamento.SchedulingResponse;
+import com.agendamento.smart.dtos.catalog.CatalogResponse;
+import com.agendamento.smart.model.user.User;
 import com.agendamento.smart.service.scheduling.SchedulingService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/scheduling")
+@RequiredArgsConstructor
 public class SchedulingController {
 
     private final SchedulingService service;
 
-    public SchedulingController(SchedulingService service) {
-        this.service = service;
+    @PostMapping
+    public ResponseEntity<SchedulingResponse> create(
+            @Valid @RequestBody SchedulingRequest request,
+            @AuthenticationPrincipal User user,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request, user, idempotencyKey));
     }
 
-    @PostMapping
-    public ResponseEntity<SchedulingResponse> create(@Valid @RequestBody SchedulingRequest request) {
-        return ResponseEntity.ok(service.create(request));
+    @GetMapping
+    public CatalogResponse<SchedulingResponse> findAll(
+            @AuthenticationPrincipal User user,
+            @RequestParam UUID unitId,
+            @RequestParam Instant from,
+            @RequestParam Instant to) {
+        return new CatalogResponse<>(service.findAll(user, unitId, from, to));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<SchedulingResponse> findById(@PathVariable UUID id) {
-        return ResponseEntity.ok(service.findById(id));
+    public ResponseEntity<SchedulingResponse> findById(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(service.findById(id, user));
     }
 }

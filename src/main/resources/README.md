@@ -15,7 +15,7 @@ Centralizar configuração de runtime e migrations empacotadas no classpath.
 - Datasource por variáveis de ambiente.
 - Hibernate sem geração de schema.
 - Flyway habilitado com baseline e migrations fora de ordem.
-- API na porta 8082.
+- API na porta 8080.
 - SQL e JDBC em níveis detalhados de log.
 
 ## Dependências internas e externas
@@ -29,7 +29,7 @@ Todo o runtime da aplicação, Docker Compose e `pom.xml`.
 
 ## Pontos de entrada
 
-- Spring Boot lê `application.properties` na inicialização.
+- Spring Boot lê `application.old` na inicialização.
 - Flyway descobre `classpath:db/migration`.
 
 ## Fluxos de entrada
@@ -38,7 +38,7 @@ Ambiente/Maven -> properties -> autoconfiguração Spring -> datasource/JPA/Flyw
 
 ## Arquivos críticos
 
-- `application.properties`.
+- `application.old`.
 - `db/migration/*.sql`.
 
 ## Regras confirmadas para evolução do módulo

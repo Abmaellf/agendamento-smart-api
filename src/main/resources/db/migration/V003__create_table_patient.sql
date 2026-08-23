@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS PATIENT (
+CREATE TABLE PATIENT (
     id BINARY(16) NOT NULL,
     code BIGINT NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -7,48 +7,15 @@ CREATE TABLE IF NOT EXISTS PATIENT (
 
     CONSTRAINT pk_patient PRIMARY KEY (id),
     CONSTRAINT uk_patient_code UNIQUE (code),
+    CONSTRAINT uk_patient_clinic_id UNIQUE (clinic_id, id),
     CONSTRAINT fk_patient_clinic
         FOREIGN KEY (clinic_id)
         REFERENCES CLINIC (id)
         ON UPDATE RESTRICT
-        ON DELETE RESTRICT
-);
+        ON DELETE RESTRICT,
 
--- Pacientes iniciais vinculados à Clínica Central criada na V001.
-INSERT INTO PATIENT (id, code, name, created_at, clinic_id)
-VALUES
-    (
-        UNHEX(REPLACE('20000000-0000-4000-8000-000000000001', '-', '')),
-        2000001,
-        'Ana Oliveira',
-        CURRENT_TIMESTAMP(6),
-        UNHEX(REPLACE('550e8400-e29b-41d4-a716-446655440000', '-', ''))
-    ),
-    (
-        UNHEX(REPLACE('20000000-0000-4000-8000-000000000002', '-', '')),
-        2000002,
-        'Bruno Santos',
-        CURRENT_TIMESTAMP(6),
-        UNHEX(REPLACE('550e8400-e29b-41d4-a716-446655440000', '-', ''))
-    ),
-    (
-        UNHEX(REPLACE('20000000-0000-4000-8000-000000000003', '-', '')),
-        2000003,
-        'Carla Mendes',
-        CURRENT_TIMESTAMP(6),
-        UNHEX(REPLACE('550e8400-e29b-41d4-a716-446655440000', '-', ''))
-    ),
-    (
-        UNHEX(REPLACE('20000000-0000-4000-8000-000000000004', '-', '')),
-        2000004,
-        'Diego Lima',
-        CURRENT_TIMESTAMP(6),
-        UNHEX(REPLACE('550e8400-e29b-41d4-a716-446655440000', '-', ''))
-    ),
-    (
-        UNHEX(REPLACE('20000000-0000-4000-8000-000000000005', '-', '')),
-        2000005,
-        'Elisa Ferreira',
-        CURRENT_TIMESTAMP(6),
-        UNHEX(REPLACE('550e8400-e29b-41d4-a716-446655440000', '-', ''))
-    );
+    INDEX idx_patient_clinic_name (clinic_id, name)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci;
+
