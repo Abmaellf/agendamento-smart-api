@@ -1,31 +1,26 @@
 CREATE TABLE SCHEDULING (
-    id BINARY(16) NOT NULL,
-    patient_id BINARY(16) NOT NULL,
-    clinic_id BINARY(16) NOT NULL,
-    unit_id BINARY(16) NOT NULL,
-    service_id BINARY(16) NOT NULL,
-    professional_id BINARY(16) NULL,
-    created_by BINARY(16) NOT NULL,
+    id UUID NOT NULL,
+    patient_id UUID NOT NULL,
+    clinic_id UUID NOT NULL,
+    unit_id UUID NOT NULL,
+    service_id UUID NOT NULL,
+    professional_id UUID NULL,
+    created_by UUID NOT NULL,
 
-    starts_at TIMESTAMP(6) NOT NULL,
+    starts_at TIMESTAMP(6) WITH TIME ZONE NOT NULL,
     time_zone VARCHAR(80) NOT NULL,
     duration_minutes INT NOT NULL,
     price DECIMAL(10, 2) NOT NULL,
     idempotency_key VARCHAR(120) NULL,
 
-    pathology JSON NOT NULL,
-    date_scheduling DATETIME(6) NOT NULL,
-    hours TIME(6) NOT NULL,
-    status ENUM(
-        'AGENDADO',
-        'ATENDENDO',
-        'CANCELADO',
-        'FINALIZADO'
-    ) NOT NULL DEFAULT 'AGENDADO',
+    pathology JSONB NOT NULL,
+    date_scheduling TIMESTAMP(6) WITHOUT TIME ZONE NOT NULL,
+    hours TIME(6) WITHOUT TIME ZONE NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'AGENDADO',
     variant VARCHAR(50) NULL,
 
-    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    created_at TIMESTAMP(6) WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP(6) WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     version BIGINT NOT NULL DEFAULT 0,
 
     CONSTRAINT pk_scheduling PRIMARY KEY (id),
@@ -67,16 +62,19 @@ CREATE TABLE SCHEDULING (
         CHECK (duration_minutes BETWEEN 1 AND 480),
     CONSTRAINT chk_scheduling_price
         CHECK (price >= 0),
+    CONSTRAINT chk_scheduling_status
+        CHECK (status IN ('AGENDADO', 'ATENDENDO', 'CANCELADO', 'FINALIZADO'))
+);
 
-    INDEX idx_scheduling_clinic_start
-        (clinic_id, starts_at),
-    INDEX idx_scheduling_unit_start
-        (clinic_id, unit_id, starts_at),
-    INDEX idx_scheduling_professional_start
-        (clinic_id, professional_id, starts_at),
-    INDEX idx_scheduling_patient_start
-        (clinic_id, patient_id, starts_at)
-) ENGINE = InnoDB
-  DEFAULT CHARACTER SET = utf8mb4
-  COLLATE = utf8mb4_0900_ai_ci;
-
+CREATE INDEX idx_scheduling_clinic_start
+    ON SCHEDULING (clinic_id, starts_at);
+CREATE INDEX idx_scheduling_unit_start
+    ON SCHEDULING (clinic_id, unit_id, starts_at);
+CREATE INDEX idx_scheduling_professional_start
+    ON SCHEDULING (clinic_id, professional_id, starts_at);
+CREATE INDEX idx_scheduling_patient_start
+    ON SCHEDULING (clinic_id, patient_id, starts_at);
+CREATE INDEX idx_scheduling_service
+    ON SCHEDULING (service_id);
+CREATE INDEX idx_scheduling_created_by
+    ON SCHEDULING (created_by);

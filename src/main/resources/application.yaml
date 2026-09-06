@@ -11,18 +11,17 @@ spring:
     url: ${AGENDA_URL}
     username: ${AGENDA_DB_USER}
     password: ${AGENDA_DB_PASSWORD}
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    driver-class-name: org.postgresql.Driver
 
 
   # ============================================================
   # JPA / HIBERNATE
   # ============================================================
   jpa:
-    database-platform: org.hibernate.dialect.MySQLDialect
     show-sql: true
 
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
 
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
@@ -30,6 +29,7 @@ spring:
     properties:
       hibernate:
         jdbc:
+          time_zone: UTC
           lob:
             non_contextual_creation: true
 
@@ -39,11 +39,9 @@ spring:
   # ============================================================
   flyway:
     enabled: true
-    locations:
-      - classpath:db/migration
-      - classpath:db/seed/dev
-    baseline-on-migrate: true
-    out-of-order: true
+    locations: ${AGENDA_FLYWAY_LOCATIONS:classpath:db/migration}
+    baseline-on-migrate: false
+    out-of-order: false
 
   # defer-datasource-initialization: true
 

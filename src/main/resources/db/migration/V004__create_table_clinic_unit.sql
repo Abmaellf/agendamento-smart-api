@@ -1,7 +1,7 @@
 CREATE TABLE CLINIC_UNIT (
-    id BINARY(16) NOT NULL,
-    clinic_id BINARY(16) NOT NULL,
-    tenant_id BINARY(16) NOT NULL,
+    id UUID NOT NULL,
+    clinic_id UUID NOT NULL,
+    tenant_id UUID NOT NULL,
     name VARCHAR(255) NOT NULL,
     time_zone VARCHAR(80) NOT NULL,
 
@@ -12,10 +12,7 @@ CREATE TABLE CLINIC_UNIT (
         FOREIGN KEY (clinic_id)
         REFERENCES CLINIC (id)
         ON UPDATE RESTRICT
-        ON DELETE RESTRICT,
+        ON DELETE RESTRICT
+);
 
-    INDEX idx_clinic_unit_tenant (tenant_id)
-) ENGINE = InnoDB
-  DEFAULT CHARACTER SET = utf8mb4
-  COLLATE = utf8mb4_0900_ai_ci;
-
+CREATE INDEX idx_clinic_unit_tenant ON CLINIC_UNIT (tenant_id);

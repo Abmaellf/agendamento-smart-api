@@ -14,7 +14,7 @@ Agrupar entidades JPA, enums, callbacks de persistência e conversores que repre
 ## Funcionalidades existentes
 
 - Modelos de clínica, usuário, paciente e agendamento.
-- Conversão de lista de patologias para JSON.
+- Mapeamento de lista de patologias para `jsonb` pelo Hibernate.
 - Geração de códigos de clínica/paciente.
 
 ## Dependências internas e externas
@@ -32,7 +32,7 @@ Materialização/persistência pelo JPA, criação por mappers/services e serial
 
 ## Fluxos de entrada
 
-DTO/service -> entidade -> repository/JPA -> MySQL; MySQL -> JPA -> entidade -> mapper ou serialização HTTP.
+DTO/service -> entidade -> repository/JPA -> PostgreSQL; PostgreSQL -> JPA -> entidade -> mapper ou serialização HTTP.
 
 ## Arquivos críticos
 

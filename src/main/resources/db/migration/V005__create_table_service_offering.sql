@@ -1,6 +1,6 @@
 CREATE TABLE SERVICE_OFFERING (
-    id BINARY(16) NOT NULL,
-    clinic_id BINARY(16) NOT NULL,
+    id UUID NOT NULL,
+    clinic_id UUID NOT NULL,
     name VARCHAR(255) NOT NULL,
     duration_minutes INT NOT NULL,
     price DECIMAL(10, 2) NOT NULL,
@@ -20,7 +20,4 @@ CREATE TABLE SERVICE_OFFERING (
         CHECK (price >= 0),
     CONSTRAINT chk_service_offering_capacity
         CHECK (capacity >= 1)
-) ENGINE = InnoDB
-  DEFAULT CHARACTER SET = utf8mb4
-  COLLATE = utf8mb4_0900_ai_ci;
-
+);

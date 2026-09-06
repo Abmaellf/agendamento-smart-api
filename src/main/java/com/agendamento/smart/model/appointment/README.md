@@ -2,20 +2,21 @@
 
 ## Objetivo do módulo
 
-Representar um agendamento de paciente e converter a lista de patologias entre Java e JSON MySQL.
+Representar um agendamento de paciente e mapear a lista de patologias entre Java e `jsonb` PostgreSQL.
 
 ## Responsabilidades principais
 
 - Mapear a tabela `APPOINTMENT`.
 - Relacionar obrigatoriamente o agendamento a `Patient`.
-- Persistir patologias em coluna JSON.
+- Persistir patologias em coluna `jsonb` com `@JdbcTypeCode(SqlTypes.JSON)`.
 - Representar status e timestamps de criação/atualização.
 
 ## Funcionalidades existentes
 
 - Entidade `Appointment`.
 - Status Java `AGENDADO`, `ATENDENDO`, `CANCELADO` e `FINALIZADO`.
-- `StringListJsonConverter` para `List<String>`.
+- Mapeamento Hibernate JSON para `List<String>`.
+- `UUID` nativo para IDs e `timestamptz` para `starts_at`, `created_at` e `updated_at`.
 - Atualização de `updatedAt` por `@PreUpdate`.
 
 ## Dependências internas e externas
@@ -31,17 +32,16 @@ Representar um agendamento de paciente e converter a lista de patologias entre J
 
 - Construção pelo `AppointmentService` no fluxo de criação.
 - Materialização pelo JPA no fluxo de consulta.
-- Conversor chamado pelo provedor JPA ao gravar/ler `pathology`.
+- Hibernate chamado pelo provedor JPA para gravar/ler `pathology` como `jsonb`.
 
 ## Fluxos de entrada
 
-Request -> service -> associações de domínio -> entidade -> conversor JSON -> MySQL; caminho inverso na consulta.
+Request -> service -> associações de domínio -> entidade -> Hibernate/JPA -> PostgreSQL; caminho inverso na consulta.
 
 ## Arquivos críticos
 
 - `Appointment.java`.
 - `AppointmentStatus.java`.
-- `StringListJsonConverter.java`.
 
 ## Regras confirmadas para evolução do módulo
 
@@ -59,6 +59,5 @@ Request -> service -> associações de domínio -> entidade -> conversor JSON ->
 - A evolução de `AppointmentStatus` para todos os estados canônicos exige migration compatível com registros existentes.
 - `appointmentDate` e `hours` podem representar horas diferentes e não há validação.
 - Não existem regras ou comandos de transição de status; conflitos, duração e data futura são validados na criação pelo service.
-- O conversor desserializa `List.class` sem tipo genérico explícito e descarta a causa original ao lançar `IllegalArgumentException`.
 - Timestamps são inicializados pela aplicação e também possuem defaults na migration; não há uma fonte temporal única declarada.
 - As FKs de `APPOINTMENT` usam exclusão restritiva para preservar o histórico.

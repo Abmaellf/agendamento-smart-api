@@ -1,6 +1,6 @@
 CREATE TABLE PROFESSIONAL_SERVICE (
-    professional_id BINARY(16) NOT NULL,
-    service_id BINARY(16) NOT NULL,
+    professional_id UUID NOT NULL,
+    service_id UUID NOT NULL,
 
     CONSTRAINT pk_professional_service
         PRIMARY KEY (professional_id, service_id),
@@ -13,10 +13,8 @@ CREATE TABLE PROFESSIONAL_SERVICE (
         FOREIGN KEY (service_id)
         REFERENCES SERVICE_OFFERING (id)
         ON UPDATE RESTRICT
-        ON DELETE RESTRICT,
+        ON DELETE RESTRICT
+);
 
-    INDEX idx_professional_service_service (service_id)
-) ENGINE = InnoDB
-  DEFAULT CHARACTER SET = utf8mb4
-  COLLATE = utf8mb4_0900_ai_ci;
-
+CREATE INDEX idx_professional_service_service
+    ON PROFESSIONAL_SERVICE (service_id);
