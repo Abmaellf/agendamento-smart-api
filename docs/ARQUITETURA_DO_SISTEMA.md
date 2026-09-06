@@ -26,7 +26,7 @@ Cliente HTTP
   -> Mapper MapStruct
   -> Repository Spring Data JPA
   -> Hibernate/JDBC
-  -> MySQL 8
+  -> PostgreSQL
 ```
 
 Há exceções relevantes ao fluxo: `AuthenticationController` e `UserController` acessam repositories diretamente; `DebugController` usa `JdbcTemplate`; e `CodeGeneratorListener`, pertencente ao modelo, depende de repositories. Essas exceções aumentam o acoplamento entre apresentação, persistência e domínio.
@@ -40,20 +40,20 @@ Há exceções relevantes ao fluxo: `AuthenticationController` e `UserController
 | `service` | Orquestrar autenticação, usuários, pacientes, clínicas, agendamentos e versão | Repositories, mappers, models e DTOs |
 | `repository` | Persistir e consultar entidades | Spring Data JPA, entidades |
 | `mapper` | Converter DTOs e entidades em código gerado | MapStruct, DTOs, entidades |
-| `model` | Representar entidades JPA, enums e conversor JSON | JPA/Hibernate, Lombok, Jackson; repositories via listener |
+| `model` | Representar entidades JPA, enums e mapeamento `jsonb` | JPA/Hibernate, Lombok; repositories via listener |
 | `dtos` | Definir contratos HTTP e paginação | Jakarta Validation; alguns DTOs dependem de entidades/enums |
 | `infra.security` | Configurar autorização stateless, autenticar JWT e emitir/validar tokens | Spring Security, Auth0 Java JWT, `UserRepository` |
 | `util` | Disponibilizar versão filtrada do projeto | Spring Configuration Properties |
-| `resources/db/migration` | Criar e evoluir o schema MySQL | Flyway, MySQL |
+| `resources/db/migration` | Criar e evoluir o schema PostgreSQL | Flyway, PostgreSQL |
 
 ## Modelo de dados implementado
 
 | Entidade | Tabela | Identificador | Relações e restrições relevantes |
 |---|---|---|---|
-| `Clinic` | `CLINIC` | UUID em `BINARY(16)` | `code` único; possui usuários; migration cria a clínica inicial |
-| `User` | `USERS` | UUID em `BINARY(16)` | login único no banco; pertence obrigatoriamente a uma clínica; papel `ADMIN` ou `USER` |
-| `Patient` | `PATIENT` | UUID em `BINARY(16)` | `code` único; pertence obrigatoriamente a uma clínica |
-| `Appointment` | `APPOINTMENT` | UUID em `BINARY(16)` | pertence a clínica, unidade, paciente e serviço; profissional é opcional; exclusões relacionadas são restritivas |
+| `Clinic` | `CLINIC` | `UUID` nativo | `code` único; possui usuários; o Compose inclui a clínica inicial pela seed de desenvolvimento |
+| `User` | `USERS` | `UUID` nativo | login único sem diferenciar maiúsculas/minúsculas; pertence obrigatoriamente a uma clínica; papel `ADMIN` ou `USER` |
+| `Patient` | `PATIENT` | `UUID` nativo | `code` único; pertence obrigatoriamente a uma clínica |
+| `Appointment` | `APPOINTMENT` | `UUID` nativo | pertence a clínica, unidade, paciente e serviço; profissional é opcional; `pathology` usa `jsonb`; instantes absolutos usam `timestamptz`; exclusões relacionadas são restritivas |
 
 As relações formam a cadeia `Clinic -> User` e `Clinic -> Patient -> Appointment`, com cada agendamento também vinculado a uma unidade e a um serviço.
 
@@ -106,12 +106,14 @@ Todo registro de negócio possuirá `tenantId`, `createdAt` e `updatedAt`, além
 1. `AppointmentController` recebe `AppointmentRequest` validado pelas constraints Jakarta Validation.
 2. `AppointmentService` resolve, no tenant autenticado, paciente, unidade, serviço e profissional opcional.
 3. O service constrói `Appointment`, valida conflitos/capacidade e persiste; não existe mapper específico para o módulo.
-4. `StringListJsonConverter` serializa `pathology` para a coluna JSON.
+4. Hibernate mapeia a lista `pathology` diretamente para a coluna PostgreSQL `jsonb` com `@JdbcTypeCode(SqlTypes.JSON)`.
 5. As consultas por UUID ou por unidade/intervalo convertem a entidade em `AppointmentResponse`.
 
 ### Evolução do banco
 
-Com `spring.jpa.hibernate.ddl-auto=none`, o schema é responsabilidade do Flyway. As migrations `V001` a `V008` formam o histórico de criação; a `V009` renomeia a estrutura legada de agendamentos para `APPOINTMENT` sem reescrever a migration já aplicada. `spring.flyway.baseline-on-migrate=true` e `out-of-order=true` estão habilitados.
+Com `spring.jpa.hibernate.ddl-auto=validate`, o Flyway `11.14.1` cria e evolui o schema, enquanto o Hibernate apenas valida sua compatibilidade com as entidades no startup. As migrations `V001` a `V008` criam o schema PostgreSQL, e a `V009` renomeia a estrutura de agendamentos para `APPOINTMENT`. A execução é estrita, com `baseline-on-migrate=false` e `out-of-order=false`.
+
+O caminho padrão da aplicação é somente `classpath:db/migration`. As seeds repetíveis de desenvolvimento ficam separadas em `classpath:db/seed/dev` e só são adicionadas pelo Compose por meio de `AGENDA_FLYWAY_LOCATIONS`. Portanto, um runtime que não defina essa variável não recebe dados de demonstração.
 
 ## Padrões utilizados
 
@@ -120,20 +122,20 @@ Com `spring.jpa.hibernate.ddl-auto=none`, o schema é responsabilidade do Flyway
 | Arquitetura em camadas | Controllers, services, repositories, mappers e model separados por pacotes | Controllers acessam repositories; model listener acessa persistência |
 | REST Controller | Endpoints com Spring MVC e `ResponseEntity` | Rotas e status HTTP não seguem uma convenção uniforme |
 | Service Layer | Regras de paciente e agendamento ficam em services | Cadastro de usuário e login ainda concentram orquestração no controller |
-| Repository | Interfaces Spring Data JPA por entidade | Métodos herdados são redeclarados e há query nativa não utilizada |
+| Repository | Interfaces Spring Data JPA por entidade | Alguns métodos herdados são redeclarados e `UserRepository` retorna `UserDetails` diretamente |
 | DTO | Records de entrada/saída e wrapper de paginação | Login e usuário expõem entidades JPA nos contratos |
 | Mapper | MapStruct com `componentModel = "spring"` | `UserController` repete atribuições já feitas pelo mapper |
 | Injeção de dependência | Beans gerenciados pelo Spring | Mistura construtor, Lombok e field injection; listener usa estado estático |
 | JWT stateless | Filtro por requisição, sem sessão de servidor | Cookie e token têm tempos diferentes; configuração de produção não está separada |
-| Database migration | Flyway versiona o schema | Enum do banco diverge do enum Java; plugin e runtime usam versões diferentes |
-| Externalized configuration | Conexão e segredo podem vir do ambiente | Há defaults inseguros e credenciais literais no plugin Maven |
+| Database migration | Flyway versiona o schema PostgreSQL; seeds de desenvolvimento têm caminho separado | Os scripts atuais constroem uma base PostgreSQL nova, não convertem uma base MySQL existente |
+| Externalized configuration | Conexão e segredo vêm do ambiente; o Compose fornece defaults locais | O segredo JWT ainda possui fallback na configuração da aplicação |
 
 ## Regras arquiteturais existentes
 
 Estas regras são impostas pelo código ou pelo banco atualmente:
 
 - O processo deve executar com Java 21 e empacota um único JAR Spring Boot.
-- A conexão usa MySQL e requer `AGENDA_URL`, `AGENDA_DB_USER` e `AGENDA_DB_PASSWORD` no runtime normal.
+- A conexão usa PostgreSQL e requer `AGENDA_URL`, `AGENDA_DB_USER` e `AGENDA_DB_PASSWORD` no runtime normal.
 - Hibernate não cria nem altera tabelas; mudanças persistentes devem ser migrations Flyway.
 - Usuários e pacientes sempre possuem clínica; agendamentos sempre possuem paciente.
 - Logins são únicos por restrição do banco.
@@ -151,9 +153,10 @@ Como regra-alvo geral, tenant e autorização devem ser derivados da sessão; o 
 
 - Pacote raiz: `com.agendamento.smart`.
 - Entidades em singular e tabelas em maiúsculas.
-- IDs de domínio em `UUID`, persistidos como `BINARY(16)`.
+- IDs de domínio usam `java.util.UUID` e o tipo PostgreSQL `UUID` nativo.
 - DTOs preferencialmente como Java records.
-- Datas e horas usam `LocalDateTime` e `LocalTime`, sem timezone no contrato.
+- Instantes absolutos de `Appointment` usam `Instant`/`timestamptz`; os campos locais legados continuam como `LocalDateTime`/`LocalTime`, acompanhados do identificador de fuso da unidade.
+- A lista `pathology` é persistida como `jsonb`.
 - Mappers são interfaces MapStruct injetáveis como beans Spring.
 - Repositories estendem `JpaRepository<Entidade, UUID>`.
 - Nomes de classes e pacotes do módulo usam o vocabulário canônico `Appointment`/`appointment`; mensagens e comentários permanecem em português.
@@ -168,16 +171,20 @@ Como regra-alvo geral, tenant e autorização devem ser derivados da sessão; o 
 | Spring Boot | 3.4.5 | Gerenciamento do build e infraestrutura web, JPA, Security e Validation |
 | Spring Data JPA/Hibernate | Gerenciada pelo Spring Boot | Persistência de todas as entidades; forte dependência das anotações JPA |
 | Spring Security | Gerenciada pelo Spring Boot | Autenticação, autorização por papel, CORS e filtro JWT |
-| MySQL Connector/J | Gerenciada pelo Spring Boot | Único driver configurado |
-| MySQL | 8.0 no Compose | Usa `BINARY(16)`, `JSON`, `ENUM` e funções específicas em query nativa |
-| Flyway | 10.20.0 no runtime; plugin Maven 10.0.0 | Fonte de verdade do schema; versões desalinhadas |
+| PostgreSQL JDBC Driver | Gerenciada pelo Spring Boot | Único driver configurado |
+| PostgreSQL | 18.1 no ambiente validado, pela imagem `bitnami/postgresql:latest` | Porta `5432`; usa `UUID`, `jsonb`, checks e `timestamptz`; `latest` é uma tag móvel |
+| Flyway | 11.14.1 | Fonte de verdade do schema; suporte PostgreSQL pelo módulo `flyway-database-postgresql` |
 | MapStruct | 1.5.5.Final | Geração de mappers no compile; processor está como dependência `provided` |
 | Lombok | Gerenciada pelo Spring Boot | Geração de builders, construtores e accessors |
 | Auth0 Java JWT | 4.4.0 | Emissão e validação de tokens HMAC |
-| Jackson | Gerenciada pelo Spring Boot | JSON HTTP e conversão manual da lista de patologias |
-| Docker/Compose | Imagens Temurin 21, Maven 3.9.9 e MySQL 8.0 | Build em duas etapas e execução com usuário não root |
+| Jackson | Gerenciada pelo Spring Boot | JSON HTTP e suporte ao mapeamento Hibernate da lista de patologias para `jsonb` |
+| Docker/Compose | Imagens Temurin 21, Maven 3.9.9 e `bitnami/postgresql:latest` | Build em duas etapas, API com usuário não root e dados PostgreSQL no volume `postgresql_data` |
 
-O sistema não possui adaptadores que permitam trocar MySQL, Spring Security ou JPA sem alteração ampla no código e nas migrations.
+O sistema não possui adaptadores que permitam trocar PostgreSQL, Spring Security ou JPA sem alteração ampla no código e nas migrations.
+
+O volume `postgresql_data` é independente do antigo volume MySQL. A troca do serviço no Compose não migra dados automaticamente; preservar dados legados exige exportação, transformação e importação explícitas.
+
+Um `flyway repair` não converte schema ou dados e não deve ser usado para simplesmente aceitar checksums do histórico MySQL. Qualquer reparo exige validar previamente o banco alvo e o histórico esperado.
 
 ## Acoplamentos e violações arquiteturais
 
@@ -193,9 +200,8 @@ O sistema não possui adaptadores que permitam trocar MySQL, Spring Security ou 
 
 ## Módulos órfãos ou parcialmente integrados
 
-- `ClinicService.createClinic` não possui controller nem chamada encontrada no código. A única clínica inicial é criada pela migration `V001`.
+- `ClinicService.createClinic` não possui controller nem chamada encontrada no código. No ambiente Compose, a clínica inicial vem de `db/seed/dev/R__001_seed_clinic.sql`.
 - `PatientServiceInt` é implementada por `PatientService`, mas consumidores injetam a classe concreta; a interface não cria um limite real.
-- `ClinicRepository.findByUuid` não possui chamada ativa.
 - `AppointmentRepository.findById` apenas redeclara método já fornecido por `JpaRepository`.
 - `UserMapper.INSTANCE` não é usado e duplica o modelo de acesso por bean Spring.
 - `UserResponseDTO` aparece como tipo declarado do cadastro, mas o endpoint devolve corpo vazio.
@@ -208,8 +214,7 @@ O sistema não possui adaptadores que permitam trocar MySQL, Spring Security ou 
 1. **Exposição de credenciais derivadas:** `LoginResponseDTO` e `/auth/list` serializam `User`, cujo `password` não tem `@JsonIgnore`. O hash BCrypt pode ser enviado ao cliente.
 2. **Ausência de isolamento por clínica:** listagens e buscas não usam a clínica do usuário. Um usuário autenticado pode consultar agendamentos por UUID e cadastrar agendamentos/pacientes para IDs de outras clínicas; `/patient/list` é público.
 3. **Elevação de privilégio no cadastro:** qualquer usuário autenticado pode chamar `/user/register/{clinicId}`, escolher qualquer clínica existente e enviar `role=ADMIN`.
-4. **Segredo no build:** o plugin Flyway no `pom.xml` contém usuário e senha literais. Além da exposição, esses valores divergem da configuração por ambiente usada pela aplicação.
-5. **Compatibilidade do rename no banco:** a `V008__create_table_scheduling.sql` é uma migration histórica imutável. A `V009` transforma a estrutura existente em `APPOINTMENT`, incluindo constraints e índices, sem alterar o checksum da V008.
+4. **Migração dos dados legados:** as migrations atuais criam o schema PostgreSQL, mas não transportam dados nem o volume do MySQL anterior. A transição de um ambiente existente precisa de procedimento de exportação, conversão, importação e validação.
 
 ### Altos
 
@@ -230,7 +235,6 @@ O sistema não possui adaptadores que permitam trocar MySQL, Spring Security ou 
 - `spring.jpa.show-sql=true` e loggers SQL em `DEBUG`/`TRACE` podem expor dados e gerar volume excessivo fora do desenvolvimento.
 - `appointmentDate` já contém data e hora, mas `hours` armazena outra hora sem validação de consistência.
 - Ainda não há transições de status, remarcação, cancelamento, recorrência nem horizonte máximo de agendamento.
-- `Flyway` runtime e plugin Maven usam versões diferentes; `out-of-order=true` reduz a previsibilidade da sequência em ambientes compartilhados.
 - Injeção de dependência, caminhos REST, idioma de pacotes e estratégia de exceções são inconsistentes.
 
 ## Diretrizes para futuras implementações
@@ -242,7 +246,7 @@ O sistema não possui adaptadores que permitam trocar MySQL, Spring Security ou 
 3. Contratos HTTP devem conter apenas DTOs; nunca retornar `User`, `Clinic` ou outra entidade JPA diretamente.
 4. Toda operação sobre paciente, usuário ou agendamento deve derivar e validar a clínica a partir do principal autenticado. IDs fornecidos pelo cliente não bastam como autorização.
 5. Atribuição de papel, especialmente `ADMIN`, deve ter política explícita e teste de autorização.
-6. Alterações de entidade/enum persistente devem incluir migration compatível e teste de integração com MySQL.
+6. Alterações de entidade/enum persistente devem incluir migration compatível e teste de integração com PostgreSQL.
 7. Novos endpoints devem seguir um prefixo e convenção únicos, preferencialmente recursos REST sob `/api`.
 8. Validação de entrada deve ser declarativa e acompanhada de respostas de erro padronizadas por `@ControllerAdvice`.
 9. Escritas compostas devem ocorrer em services com fronteira `@Transactional` clara.
@@ -266,9 +270,9 @@ O sistema não possui adaptadores que permitam trocar MySQL, Spring Security ou 
 - Caso feliz e validações de entrada.
 - Usuário sem autenticação, papel insuficiente e tentativa entre clínicas.
 - Registro inexistente, duplicado e concorrência relevante.
-- Compatibilidade entre enum Java, coluna MySQL e conversão MapStruct.
+- Compatibilidade entre enum Java, constraints PostgreSQL e mapeamento JPA/Hibernate.
 - Serialização garantindo ausência de `password` e detalhes internos.
-- Aplicação das migrations em banco MySQL vazio.
+- Aplicação das migrations em banco PostgreSQL vazio, sem seeds por padrão, e com seeds quando `AGENDA_FLYWAY_LOCATIONS` as habilitar.
 
 ## Manutenção desta documentação
 

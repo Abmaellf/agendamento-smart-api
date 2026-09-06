@@ -15,6 +15,6 @@ public class DebugController {
 
     @GetMapping("/debug/db")
     public Map<String, Object> db() {
-        return jdbc.queryForMap("SELECT DATABASE()");
+        return jdbc.queryForMap("SELECT current_database() AS database");
     }
 }

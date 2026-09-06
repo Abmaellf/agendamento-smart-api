@@ -10,12 +10,12 @@ Agrupar os recursos de evolução do banco carregados pelo classpath.
 
 ## Funcionalidades existentes
 
-- Nove migrations versionadas para o schema MySQL e seeds repetíveis de desenvolvimento.
+- Nove migrations versionadas para o schema PostgreSQL e seeds repetíveis de desenvolvimento em local separado.
 
 ## Dependências internas e externas
 
-- Internas: `application.old` aponta para `classpath:db/migration`.
-- Externas: Flyway e MySQL.
+- Internas: `application.yaml` aponta por padrão para `classpath:db/migration`.
+- Externas: Flyway `11.14.1` e PostgreSQL.
 
 ## Módulos relacionados
 
@@ -27,7 +27,7 @@ Descoberta automática do Flyway durante a inicialização.
 
 ## Fluxos de entrada
 
-Classpath -> Flyway -> migrations pendentes -> schema MySQL.
+Classpath -> Flyway -> migrations pendentes -> schema PostgreSQL -> validação do schema pelo Hibernate.
 
 ## Arquivos críticos
 
@@ -40,9 +40,10 @@ Classpath -> Flyway -> migrations pendentes -> schema MySQL.
 - Todo dado de negócio possui tenant e timestamps; agendamento possui unidade e snapshots de duração/preço.
 - Constraints e índices devem reforçar unicidades e consultas de conflito/capacidade.
 - Histórico de agendamento não pode ser removido por cascade.
-- Mudanças são sempre novas migrations e devem ser testadas em MySQL vazio e em atualização do schema legado.
+- Mudanças são sempre novas migrations e devem ser testadas em PostgreSQL vazio.
+- Migração de um ambiente MySQL existente é um processo de dados separado; o Flyway e o volume `postgresql_data` não importam o volume anterior automaticamente.
 
 ## Observações técnicas e débitos identificados
 
-- Não há scripts separados de seed por ambiente; a clínica inicial faz parte da migration de schema.
+- As seeds de desenvolvimento ficam em `db/seed/dev` e não fazem parte do caminho padrão da aplicação. O Compose as habilita por `AGENDA_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/seed/dev`.
 - Os achados por migration estão em `migration/README.md`.

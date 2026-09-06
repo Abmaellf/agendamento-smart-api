@@ -1,69 +1,37 @@
-RENAME TABLE SCHEDULING TO APPOINTMENT;
+ALTER TABLE SCHEDULING RENAME TO APPOINTMENT;
 
 ALTER TABLE APPOINTMENT
     RENAME COLUMN date_scheduling TO appointment_date;
 
-ALTER TABLE APPOINTMENT
-    DROP FOREIGN KEY fk_scheduling_clinic,
-    DROP FOREIGN KEY fk_scheduling_patient_tenant,
-    DROP FOREIGN KEY fk_scheduling_unit_tenant,
-    DROP FOREIGN KEY fk_scheduling_service_tenant,
-    DROP FOREIGN KEY fk_scheduling_professional_tenant,
-    DROP FOREIGN KEY fk_scheduling_created_by_tenant,
-    DROP CHECK chk_scheduling_duration,
-    DROP CHECK chk_scheduling_price;
+ALTER TABLE APPOINTMENT RENAME CONSTRAINT pk_scheduling
+    TO pk_appointment;
+ALTER TABLE APPOINTMENT RENAME CONSTRAINT uk_scheduling_clinic_idempotency
+    TO uk_appointment_clinic_idempotency;
+ALTER TABLE APPOINTMENT RENAME CONSTRAINT fk_scheduling_clinic
+    TO fk_appointment_clinic;
+ALTER TABLE APPOINTMENT RENAME CONSTRAINT fk_scheduling_patient_tenant
+    TO fk_appointment_patient_tenant;
+ALTER TABLE APPOINTMENT RENAME CONSTRAINT fk_scheduling_unit_tenant
+    TO fk_appointment_unit_tenant;
+ALTER TABLE APPOINTMENT RENAME CONSTRAINT fk_scheduling_service_tenant
+    TO fk_appointment_service_tenant;
+ALTER TABLE APPOINTMENT RENAME CONSTRAINT fk_scheduling_professional_tenant
+    TO fk_appointment_professional_tenant;
+ALTER TABLE APPOINTMENT RENAME CONSTRAINT fk_scheduling_created_by_tenant
+    TO fk_appointment_created_by_tenant;
+ALTER TABLE APPOINTMENT RENAME CONSTRAINT chk_scheduling_duration
+    TO chk_appointment_duration;
+ALTER TABLE APPOINTMENT RENAME CONSTRAINT chk_scheduling_price
+    TO chk_appointment_price;
+ALTER TABLE APPOINTMENT RENAME CONSTRAINT chk_scheduling_status
+    TO chk_appointment_status;
 
-ALTER TABLE APPOINTMENT
-    RENAME INDEX uk_scheduling_clinic_idempotency
-        TO uk_appointment_clinic_idempotency,
-    RENAME INDEX idx_scheduling_clinic_start
-        TO idx_appointment_clinic_start,
-    RENAME INDEX idx_scheduling_unit_start
-        TO idx_appointment_unit_start,
-    RENAME INDEX idx_scheduling_professional_start
-        TO idx_appointment_professional_start,
-    RENAME INDEX idx_scheduling_patient_start
-        TO idx_appointment_patient_start,
-    RENAME INDEX fk_scheduling_service_tenant
-        TO idx_appointment_service,
-    RENAME INDEX fk_scheduling_created_by_tenant
-        TO idx_appointment_created_by;
-
-ALTER TABLE APPOINTMENT
-    ADD CONSTRAINT fk_appointment_clinic
-        FOREIGN KEY (clinic_id)
-        REFERENCES CLINIC (id)
-        ON UPDATE RESTRICT
-        ON DELETE RESTRICT,
-    ADD CONSTRAINT fk_appointment_patient_tenant
-        FOREIGN KEY (clinic_id, patient_id)
-        REFERENCES PATIENT (clinic_id, id)
-        ON UPDATE RESTRICT
-        ON DELETE RESTRICT,
-    ADD CONSTRAINT fk_appointment_unit_tenant
-        FOREIGN KEY (clinic_id, unit_id)
-        REFERENCES CLINIC_UNIT (clinic_id, id)
-        ON UPDATE RESTRICT
-        ON DELETE RESTRICT,
-    ADD CONSTRAINT fk_appointment_service_tenant
-        FOREIGN KEY (clinic_id, service_id)
-        REFERENCES SERVICE_OFFERING (clinic_id, id)
-        ON UPDATE RESTRICT
-        ON DELETE RESTRICT,
-    ADD CONSTRAINT fk_appointment_professional_tenant
-        FOREIGN KEY (clinic_id, professional_id)
-        REFERENCES PROFESSIONAL (clinic_id, id)
-        ON UPDATE RESTRICT
-        ON DELETE RESTRICT,
-    ADD CONSTRAINT fk_appointment_created_by_tenant
-        FOREIGN KEY (clinic_id, created_by)
-        REFERENCES USERS (clinic_id, id)
-        ON UPDATE RESTRICT
-        ON DELETE RESTRICT,
-    ADD CONSTRAINT chk_appointment_duration
-        CHECK (duration_minutes BETWEEN 1 AND 480),
-    ADD CONSTRAINT chk_appointment_price
-        CHECK (price >= 0);
+ALTER INDEX idx_scheduling_clinic_start RENAME TO idx_appointment_clinic_start;
+ALTER INDEX idx_scheduling_unit_start RENAME TO idx_appointment_unit_start;
+ALTER INDEX idx_scheduling_professional_start RENAME TO idx_appointment_professional_start;
+ALTER INDEX idx_scheduling_patient_start RENAME TO idx_appointment_patient_start;
+ALTER INDEX idx_scheduling_service RENAME TO idx_appointment_service;
+ALTER INDEX idx_scheduling_created_by RENAME TO idx_appointment_created_by;
 
 UPDATE APPOINTMENT
 SET idempotency_key = REPLACE(

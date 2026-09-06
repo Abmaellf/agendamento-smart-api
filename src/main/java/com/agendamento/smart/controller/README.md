@@ -11,7 +11,7 @@ Agrupar adaptadores HTTP e hospedar o endpoint técnico de diagnóstico do banco
 
 ## Funcionalidades existentes
 
-- Consulta do nome do banco selecionado pela conexão por `SELECT DATABASE()`.
+- Consulta do nome do banco PostgreSQL selecionado pela conexão por `SELECT current_database() AS database`.
 
 ## Dependências internas e externas
 

@@ -1,9 +1,10 @@
 CREATE TABLE PATIENT (
-    id BINARY(16) NOT NULL,
+    id UUID NOT NULL,
     code BIGINT NOT NULL,
     name VARCHAR(255) NOT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    clinic_id BINARY(16) NOT NULL,
+    created_at TIMESTAMP(6) WITHOUT TIME ZONE NOT NULL
+        DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+    clinic_id UUID NOT NULL,
 
     CONSTRAINT pk_patient PRIMARY KEY (id),
     CONSTRAINT uk_patient_code UNIQUE (code),
@@ -12,10 +13,7 @@ CREATE TABLE PATIENT (
         FOREIGN KEY (clinic_id)
         REFERENCES CLINIC (id)
         ON UPDATE RESTRICT
-        ON DELETE RESTRICT,
+        ON DELETE RESTRICT
+);
 
-    INDEX idx_patient_clinic_name (clinic_id, name)
-) ENGINE = InnoDB
-  DEFAULT CHARACTER SET = utf8mb4
-  COLLATE = utf8mb4_0900_ai_ci;
-
+CREATE INDEX idx_patient_clinic_name ON PATIENT (clinic_id, name);

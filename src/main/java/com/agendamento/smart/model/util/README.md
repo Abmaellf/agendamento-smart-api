@@ -41,7 +41,7 @@ Persistência de entidade sem código -> query `MAX(code)` -> incremento/default
 - Identificadores auxiliares devem ser gerados de forma atômica e segura sob concorrência; `MAX + 1` não sustenta essa regra.
 - Geração de código não pode consultar repositories a partir de entidade/callback JPA.
 - Códigos legíveis não substituem UUIDs nem participam da fronteira de tenant.
-- Toda estratégia nova deve possuir constraint/migration e teste concorrente compatível com MySQL.
+- Toda estratégia nova deve possuir constraint/migration e teste concorrente compatível com PostgreSQL.
 
 ## Observações técnicas e débitos identificados
 

@@ -25,7 +25,6 @@ import java.util.UUID;
 public class ServiceOffering {
 
     @Id
-    @Column(columnDefinition = "BINARY(16)")
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

@@ -7,15 +7,15 @@ INSERT INTO PROFESSIONAL (
 )
 VALUES
     (
-        UNHEX(REPLACE('30000000-0000-4000-8000-000000000001', '-', '')),
-        UNHEX(REPLACE('550e8400-e29b-41d4-a716-446655440000', '-', '')),
+        '30000000-0000-4000-8000-000000000001'::uuid,
+        '550e8400-e29b-41d4-a716-446655440000'::uuid,
         'Carla Profissional',
         '1,2,3,4,5,6,7'
     ),
     (
-        UNHEX(REPLACE('30000000-0000-4000-8000-000000000002', '-', '')),
-        UNHEX(REPLACE('550e8400-e29b-41d4-a716-446655440000', '-', '')),
+        '30000000-0000-4000-8000-000000000002'::uuid,
+        '550e8400-e29b-41d4-a716-446655440000'::uuid,
         'Diego Profissional',
         '1,2,3,4,5'
     )
-ON DUPLICATE KEY UPDATE id = id;
+ON CONFLICT DO NOTHING;

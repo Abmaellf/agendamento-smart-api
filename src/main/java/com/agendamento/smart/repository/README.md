@@ -10,17 +10,17 @@ Definir a porta concreta de persistência Spring Data JPA para clínicas, usuár
 - Busca de usuário por login e paciente por nome.
 - Paginação de pacientes.
 - Consulta do maior código de clínica/paciente.
-- Query nativa alternativa de clínica por UUID textual.
+- Busca case-insensitive de usuário por login.
 
 ## Funcionalidades existentes
 
 - `ClinicRepository`, `UserRepository`, `PatientRepository` e `AppointmentRepository`.
-- Queries derivadas, JPQL e uma query MySQL nativa.
+- Queries derivadas e JPQL; não há mais conversão binária de UUID em query nativa.
 
 ## Dependências internas e externas
 
 - Internas: todas as entidades persistentes.
-- Externas: Spring Data JPA e MySQL para `UUID_TO_BIN` na query nativa.
+- Externas: Spring Data JPA/Hibernate e o datasource PostgreSQL.
 
 ## Módulos relacionados
 
@@ -33,7 +33,7 @@ Definir a porta concreta de persistência Spring Data JPA para clínicas, usuár
 
 ## Fluxos de entrada
 
-Service/controller/filtro/listener -> repository proxy -> Hibernate -> datasource MySQL.
+Service/controller/filtro/listener -> repository proxy -> Hibernate -> datasource PostgreSQL.
 
 ## Arquivos críticos
 
@@ -53,9 +53,8 @@ Service/controller/filtro/listener -> repository proxy -> Hibernate -> datasourc
 
 ## Observações técnicas e débitos identificados
 
-- `ClinicRepository.findByUuid` não possui chamada ativa e usa `UUID_TO_BIN(..., 1)`, enquanto a seed usa `UNHEX(REPLACE(...))`; os formatos podem divergir.
 - `AppointmentRepository.findById` e `PatientRepository.findAll(Pageable)` redeclaram operações herdadas.
-- `UserRepository.findByLogin` retorna `UserDetails`, exigindo casts em consumidores de domínio.
+- `UserRepository.findByLogin` usa `LOWER(...)` em JPQL para preservar a busca case-insensitive e retorna `UserDetails`, exigindo casts em consumidores de domínio.
 - `findMaxCode` sustenta uma geração de código sujeita a concorrência.
 - `findByName` verifica duplicidade global, sem clínica e sem constraint correspondente no banco.
 - A camada é acessada por apresentação, segurança e callbacks de entidade, aumentando o acoplamento transversal.

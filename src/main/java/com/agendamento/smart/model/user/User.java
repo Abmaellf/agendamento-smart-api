@@ -22,8 +22,7 @@ import java.util.UUID;
 @Builder
 public class User implements UserDetails {
     @Id
-    @GeneratedValue
-    @Column(columnDefinition = "BINARY(16)")
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
     private String login;
     private String password;
@@ -33,7 +32,7 @@ public class User implements UserDetails {
 //    @ManyToOne(fetch = FetchType.LAZY)
     @JsonManagedReference
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "clinic_id", nullable = false, columnDefinition = "BINARY(16)")
+    @JoinColumn(name = "clinic_id", nullable = false)
     private Clinic clinic;
 
     @JsonIgnore

@@ -12,7 +12,7 @@ Este documento descreve a capacidade implementada. O estado-alvo confirmado est�
 
 ## Propósito principal
 
-O sistema fornece uma API HTTP para autenticar usuários vinculados a clínicas, cadastrar e consultar pacientes e criar/consultar agendamentos desses pacientes. Ele centraliza esses dados em MySQL e protege parte das operações com JWT e papéis `ADMIN`/`USER`.
+O sistema fornece uma API HTTP para autenticar usuários vinculados a clínicas, cadastrar e consultar pacientes e criar/consultar agendamentos desses pacientes. Ele centraliza esses dados em PostgreSQL e protege parte das operações com JWT e papéis `ADMIN`/`USER`.
 
 O README existente descreve uso em áreas médicas e clínicas de Psicologia e Fisioterapia. O código atual é genérico: não implementa prontuário, especialidade clínica ou regra própria de uma dessas áreas.
 
@@ -24,7 +24,7 @@ O README existente descreve uso em áreas médicas e clínicas de Psicologia e F
 - Cadastro de usuário em clínica existente.
 - Cadastro de paciente e listagem paginada.
 - Criação de agendamento associado a paciente.
-- Armazenamento de uma lista de patologias em JSON por agendamento.
+- Armazenamento de uma lista de patologias em `jsonb` por agendamento.
 - Consulta de agendamento por UUID.
 - Versionamento do schema com Flyway.
 - Consulta da versão da aplicação para diagnóstico de build.
@@ -110,7 +110,7 @@ Entrada: UUID do paciente, patologias, data/hora, hora adicional, status opciona
 1. O paciente é localizado por UUID.
 2. O mapper cria a entidade de agendamento.
 3. O service associa o paciente.
-4. As patologias são serializadas em JSON e o agendamento é persistido.
+4. Hibernate mapeia as patologias diretamente para `jsonb` e o agendamento é persistido.
 
 Resultado: DTO com IDs, dados de agenda, status e timestamps.
 
@@ -142,7 +142,7 @@ O produto implementado é uma API inicial de gestão de agendamentos, ainda conc
 
 A evolução confirmada é um SaaS multi-tenant para fisioterapia, Pilates e atividades relacionadas, com usuários operando somente dados da própria clínica. Uma `Unit` padrão será criada desde o onboarding; pacientes e profissionais serão compartilhados pelo tenant e agendamentos serão vinculados à unidade. O código atual ainda não materializa essa arquitetura de segurança e domínio.
 
-O enum de agendamento sugere um ciclo `AGENDADO`, `ATENDENDO`, `CANCELADO` e `FINALIZADO`; porém não existem endpoints nem regras de transição, e o banco ainda não aceita `ATENDENDO`. Portanto, esse ciclo não deve ser tratado como funcionalidade existente.
+O enum Java e o check do schema PostgreSQL aceitam `AGENDADO`, `ATENDENDO`, `CANCELADO` e `FINALIZADO`; porém não existem endpoints nem regras de transição. Portanto, o ciclo completo não deve ser tratado como funcionalidade existente.
 
 O ciclo-alvo confirmado usa `AGENDADO`, `CONFIRMADO`, `EM_ATENDIMENTO`, `CONCLUIDO`, `CANCELADO`, `FALTA` e `REMARCADO`, com ações manuais no primeiro MVP. Recorrência, remarcação vinculada, cancelamento auditável, capacidade do serviço e bloqueios de sobreposição também são requisitos confirmados ainda não implementados.
 
@@ -150,14 +150,20 @@ O ciclo-alvo confirmado usa `AGENDADO`, `CONFIRMADO`, `EM_ATENDIMENTO`, `CONCLUI
 
 - Aplicação Java 21/Spring Boot executada como JAR único.
 - Porta HTTP fixa `8080` na configuração da aplicação.
-- Banco MySQL; o Compose usa MySQL 8.0 com volume persistente.
-- Schema gerenciado pelo Flyway na inicialização.
+- Banco PostgreSQL 18.1 no ambiente validado; o Compose usa a tag móvel `bitnami/postgresql:latest`, publica por padrão `127.0.0.1:5432` e persiste em `postgresql_data`.
+- Schema gerenciado pelo Flyway `11.14.1` na inicialização, com `baseline-on-migrate=false` e `out-of-order=false`.
+- Identificadores são persistidos como `UUID` nativo, patologias como `jsonb` e instantes absolutos de agendamento/auditoria como `timestamptz`.
 - Configuração de conexão por `AGENDA_URL`, `AGENDA_DB_USER` e `AGENDA_DB_PASSWORD`.
+- A aplicação carrega somente `classpath:db/migration` por padrão; o Compose acrescenta as seeds de desenvolvimento de `classpath:db/seed/dev` por `AGENDA_FLYWAY_LOCATIONS`.
 - Assinatura JWT por `JWT_SECRET`, com default configurado para desenvolvimento.
 - Origens CORS globais: frontend Vercel do projeto e `http://localhost:3000`.
 - Dockerfile multi-stage compila com Maven/Temurin 21 e executa com JRE 21 como usuário não root.
-- O Compose espera a saúde do MySQL antes de iniciar a API e expõe banco e API em endereços/portas configuráveis.
+- O Compose espera a saúde do PostgreSQL antes de iniciar a API e expõe banco e API em endereços/portas configuráveis.
 - Logs SQL estão habilitados em nível detalhado.
+
+O volume `postgresql_data` é separado do volume usado pelo MySQL anterior. Nem o volume nem os dados MySQL são migrados automaticamente pelo Compose ou pelo Flyway; ambientes com dados a preservar precisam de migração explícita de dados antes da troca.
+
+`flyway repair` não é um mecanismo de migração de banco ou dados e não deve ser executado cegamente para reconciliar o histórico MySQL com o schema PostgreSQL.
 
 Não há perfil Spring separado para desenvolvimento, teste e produção. Também não há testes automatizados ou ambiente de teste em memória/banco dedicado.
 
@@ -169,7 +175,7 @@ Não há perfil Spring separado para desenvolvimento, teste e produção. També
 - A listagem de pacientes é pública.
 - Não existe API de clínica, embora clínica seja obrigatória para usuários e pacientes.
 - Não existe agenda consultável por período; somente criação e busca por UUID.
-- O estado `ATENDENDO` existe em Java, mas não no schema.
+- Não existem comandos nem regras de transição entre os estados já aceitos por Java e pelo schema.
 - Erros de negócio não possuem representação HTTP oficial.
 
 Esses limites devem ser considerados antes de declarar o sistema pronto para operação com dados reais ou múltiplas clínicas.

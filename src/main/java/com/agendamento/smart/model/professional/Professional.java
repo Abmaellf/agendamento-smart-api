@@ -30,7 +30,6 @@ import java.util.UUID;
 public class Professional {
 
     @Id
-    @Column(columnDefinition = "BINARY(16)")
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

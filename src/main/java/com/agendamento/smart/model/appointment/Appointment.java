@@ -13,6 +13,8 @@ import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -56,8 +58,7 @@ import java.util.UUID;
 public class Appointment {
 
     @Id
-    @GeneratedValue
-    @Column(columnDefinition = "BINARY(16)")
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -99,8 +100,8 @@ public class Appointment {
     @Column(name = "idempotency_key", length = 120, updatable = false)
     private String idempotencyKey;
 
-    @Column(columnDefinition = "json", nullable = false)
-    @Convert(converter = StringListJsonConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb", nullable = false)
     private List<String> pathology;
 
     @Column(name = "appointment_date", nullable = false)

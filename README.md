@@ -3,7 +3,7 @@
 
 ![Java](https://img.shields.io/badge/java-%23ED8B00.svg?style=for-the-badge&logo=openjdk&logoColor=white)
 ![Spring](https://img.shields.io/badge/spring-%236DB33F.svg?style=for-the-badge&logo=spring&logoColor=white)
-![MySQL](https://img.shields.io/badge/mysql-%234479A1.svg?style=for-the-badge&logo=mysql&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/postgresql-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
 ![Apache Maven](https://img.shields.io/badge/Apache%20Maven-C71A36?style=for-the-badge&logo=Apache%20Maven&logoColor=white)
 ![Apache Tomcat](https://img.shields.io/badge/apache%20tomcat-%23F8DC75.svg?style=for-the-badge&logo=apache-tomcat&logoColor=black)
 ![Hibernate](https://img.shields.io/badge/Hibernate-59666C?style=for-the-badge&logo=Hibernate&logoColor=white)
@@ -63,10 +63,24 @@ docker compose logs -f api
 Serviços:
 
 - API: `http://localhost:8080`;
-- MySQL: `localhost:3306`;
+- PostgreSQL: `localhost:5432`, publicado apenas em `127.0.0.1` por padrão;
 - front-end irmão: `http://localhost:3000` quando iniciado com `npm run dev -- --host 0.0.0.0`.
 
-As migrations até `V008__create_table_scheduling.sql` formam o histórico legado que cria os catálogos e a antiga tabela de agendamentos. A `V009` preserva esse histórico e renomeia a estrutura para `APPOINTMENT`; a seed repetível histórica `R__008_seed_scheduling.sql` continua compatível com o Flyway. Essas coleções persistem dados e alteram o serviço mutável. Para repeti-las integralmente, use uma base descartável e restaure a seed. O comando seguinte remove **somente o volume Docker deste Compose** e não deve ser usado quando houver dados locais a preservar:
+O Compose usa `bitnami/postgresql:latest` — PostgreSQL 18.1 no ambiente validado —, mantém os dados no volume nomeado `postgresql_data` e conecta a API por `jdbc:postgresql://db:5432/...`. Como `latest` é uma tag móvel, confirme a versão resolvida antes de promover a imagem. O schema PostgreSQL usa `UUID` nativo para identificadores, `jsonb` para patologias e `timestamptz` (`TIMESTAMP WITH TIME ZONE`) para instantes absolutos de agendamento e auditoria. As migrations são executadas pelo Flyway `11.14.1`.
+
+Por padrão, a aplicação carrega somente `classpath:db/migration`. O Compose habilita deliberadamente os dados de desenvolvimento com:
+
+```text
+AGENDA_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/seed/dev
+```
+
+Assim, executar a aplicação fora do Compose não insere seeds, salvo se essa variável for definida explicitamente. As migrations até `V008__create_table_scheduling.sql` criam o schema e a antiga tabela de agendamentos; a `V009` renomeia a estrutura para `APPOINTMENT`. A seed repetível histórica `R__008_seed_scheduling.sql` conserva o nome por compatibilidade de nomenclatura, embora opere sobre `APPOINTMENT`.
+
+> **Atenção na migração:** o volume e os dados do MySQL anterior não são convertidos nem importados automaticamente. `postgresql_data` é um armazenamento separado. Dados que precisem ser preservados exigem um processo explícito de exportação, transformação e importação para PostgreSQL antes da troca definitiva.
+
+Não execute `flyway repair` de forma cega para aceitar o histórico MySQL ou mascarar divergências de checksum. `repair` altera metadados do histórico, mas não converte schema nem dados; antes de qualquer uso, confirme o banco alvo, a origem do histórico e o plano de migração/rollback.
+
+Para reaplicar migrations e seeds integralmente, use apenas uma base descartável. O comando seguinte remove **somente os volumes deste projeto Compose**, incluindo `postgresql_data`, e não deve ser usado quando houver dados PostgreSQL locais a preservar:
 
 ```bash
 docker compose down -v
@@ -98,26 +112,20 @@ O roteiro completo de caixa branca e Postman está no front-end, em `specs/001-c
 
 
 ## Comandos
-```bash
-docker compose up -d
 
-[+] Running 2/2
- ✔ Network agendamento-smart-api_default  Created                                                                                                                                0.1s
- ✔ Container my-mysql-db                  Started
+```bash
+docker compose up -d --build
+docker compose ps
+docker compose logs -f api
 ```
+
+Para executar a API pelo Maven fora do Compose, mantenha o PostgreSQL ativo e informe a conexão explicitamente:
+
 ```bash
-docker ps
-
-CONTAINER ID   IMAGE       COMMAND                  CREATED          STATUS          PORTS                                                    NAMES
-cfaf466bca10   mysql:8.0   "docker-entrypoint.s…"   26 seconds ago   Up 26 seconds   0.0.0.0:3306->3306/tcp, [::]:3306->3306/tcp, 33060/tcp   my-mysql-db
-
-```
-```bash
-mvn spring-boot:run
-
-2025-08-02T14:49:34.223-04:00  INFO 23583 --- [  restartedMain] o.s.b.d.a.OptionalLiveReloadServer       : LiveReload server is running on port 35729
-2025-08-02T14:49:34.265-04:00  INFO 23583 --- [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
-2025-08-02T14:49:34.282-04:00  INFO 23583 --- [  restartedMain] c.a.smart.AgendaSmartApplication         : Started AgendaSmartApplication in 7.559 seconds (process running for 8.179)
+AGENDA_URL=jdbc:postgresql://localhost:5432/agendamento-smart-api \
+AGENDA_DB_USER=agenda \
+AGENDA_DB_PASSWORD=agenda-local-password \
+./mvnw spring-boot:run
 ```
 
 ## Licença
