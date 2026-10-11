@@ -1,0 +1,18 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  jpa:
+    show-sql: false
+
+  flyway:
+    locations: ${AGENDA_FLYWAY_LOCATIONS:classpath:db/migration}
+
+logging:
+  level:
+    root: WARN
+    com.agendamento.smart: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+    org.springframework.jdbc.core: WARN

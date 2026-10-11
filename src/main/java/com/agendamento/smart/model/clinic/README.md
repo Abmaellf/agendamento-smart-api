@@ -54,7 +54,7 @@ Builder/service ou materialização JPA -> callbacks de persistência -> tabela 
 ## Observações técnicas e débitos identificados
 
 - Não existe controller de clínica.
-- No ambiente Compose, `R__001_seed_clinic.sql` insere uma clínica fixa porque `AGENDA_FLYWAY_LOCATIONS` inclui `db/seed/dev`; a aplicação não executa essa seed por padrão.
+- No profile `test` e no ambiente Compose, `R__001_seed_clinic.sql` insere uma clínica fixa porque `db/seed/dev` está habilitado; `homo` e `prod` não executam essa seed.
 - Há duas estratégias de código (`MAX + 1` e timestamp), embora normalmente o listener preencha antes do callback da entidade.
 - `MAX + 1` não é seguro sob concorrência.
 - A entidade declara `@JsonIgnore` e o lado usuário usa `@JsonManagedReference`; as anotações não formam um par consistente.

@@ -14,7 +14,7 @@ Agrupar os recursos de evolução do banco carregados pelo classpath.
 
 ## Dependências internas e externas
 
-- Internas: `application.yaml` aponta por padrão para `classpath:db/migration`.
+- Internas: `application.yaml` aponta para `classpath:db/migration`; o profile `test` também inclui `classpath:db/seed/dev`.
 - Externas: Flyway `11.14.1` e PostgreSQL.
 
 ## Módulos relacionados
@@ -45,5 +45,5 @@ Classpath -> Flyway -> migrations pendentes -> schema PostgreSQL -> validação 
 
 ## Observações técnicas e débitos identificados
 
-- As seeds de desenvolvimento ficam em `db/seed/dev` e não fazem parte do caminho padrão da aplicação. O Compose as habilita por `AGENDA_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/seed/dev`.
+- As seeds de desenvolvimento ficam em `db/seed/dev` e são habilitadas somente pelo profile `test` ou por `AGENDA_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/seed/dev`. Use-as apenas em bancos descartáveis.
 - Os achados por migration estão em `migration/README.md`.

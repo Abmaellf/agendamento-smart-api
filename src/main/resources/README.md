@@ -16,9 +16,12 @@ Centralizar configuração de runtime e migrations empacotadas no classpath.
 - Driver PostgreSQL explícito; o dialeto é detectado pelo Hibernate a partir da conexão JDBC.
 - Hibernate apenas valida o schema (`ddl-auto=validate`) e usa UTC no JDBC.
 - Flyway `11.14.1` habilitado com `baseline-on-migrate=false` e `out-of-order=false`.
-- Somente `classpath:db/migration` é carregado por padrão; o Compose adiciona `classpath:db/seed/dev` via `AGENDA_FLYWAY_LOCATIONS`.
+- Profiles Spring separados para teste (`test`), homologação (`homo`) e produção (`prod`).
+- Profiles Maven homônimos como atalhos para selecionar o profile Spring em `spring-boot:run`.
+- O profile `test` carrega migrations e seeds de desenvolvimento por padrão; `homo` e `prod` carregam somente migrations.
 - API na porta 8080.
-- SQL e JDBC em níveis detalhados de log.
+- SQL em `DEBUG` somente em `test`, sem registrar valores dos parâmetros; os demais profiles usam níveis seguros.
+- Segredo JWT obrigatório por `JWT_SECRET`, sem fallback no repositório.
 
 ## Dependências internas e externas
 
@@ -31,8 +34,8 @@ Todo o runtime da aplicação, Docker Compose e `pom.xml`.
 
 ## Pontos de entrada
 
-- Spring Boot lê `application.yaml` na inicialização.
-- Flyway descobre `classpath:db/migration` por padrão; locais adicionais dependem de `AGENDA_FLYWAY_LOCATIONS`.
+- Spring Boot lê `application.yaml` e o `application-<profile>.yaml` selecionado pelo runtime, pelo IntelliJ ou pelo atalho Maven.
+- Flyway descobre os locais definidos pelo profile; `AGENDA_FLYWAY_LOCATIONS` permite uma sobrescrita explícita.
 
 ## Fluxos de entrada
 
@@ -40,9 +43,9 @@ Ambiente/Maven -> properties -> autoconfiguração Spring -> datasource/JPA/Flyw
 
 ## Arquivos críticos
 
-- `application.yaml`.
+- `application.yaml` e `application-{test,homo,prod}.yaml`.
 - `db/migration/*.sql`.
-- `db/seed/dev/*.sql` (somente dados de desenvolvimento habilitados explicitamente).
+- `db/seed/dev/*.sql` (dados de desenvolvimento habilitados pelo profile `test` ou por sobrescrita explícita).
 
 ## Regras confirmadas para evolução do módulo
 
@@ -54,9 +57,7 @@ Ambiente/Maven -> properties -> autoconfiguração Spring -> datasource/JPA/Flyw
 
 ## Observações técnicas e débitos identificados
 
-- `JWT_SECRET` possui fallback `my-secret-key`.
-- Não há profiles separados para local, teste e produção.
-- `show-sql`, Hibernate SQL `DEBUG` e JDBC `DEBUG` estão habilitados globalmente.
-- O caminho padrão não executa seeds; o `docker-compose.yml` opta por elas ao definir `AGENDA_FLYWAY_LOCATIONS`.
+- Nenhum profile é ativado implicitamente fora do Compose; selecione-o pelo runtime, pelo IntelliJ ou por `./mvnw -P<profile> spring-boot:run`.
+- O `docker-compose.yml` ativa `test`, que inclui as seeds de desenvolvimento; ele não é uma configuração de homologação ou produção.
 - O volume PostgreSQL `postgresql_data` não reutiliza nem converte o volume MySQL anterior.
 - O resource filtering aplica-se a todos os recursos, aumentando a necessidade de cuidado com placeholders.

@@ -113,7 +113,7 @@ Todo registro de negócio possuirá `tenantId`, `createdAt` e `updatedAt`, além
 
 Com `spring.jpa.hibernate.ddl-auto=validate`, o Flyway `11.14.1` cria e evolui o schema, enquanto o Hibernate apenas valida sua compatibilidade com as entidades no startup. As migrations `V001` a `V008` criam o schema PostgreSQL, e a `V009` renomeia a estrutura de agendamentos para `APPOINTMENT`. A execução é estrita, com `baseline-on-migrate=false` e `out-of-order=false`.
 
-O caminho padrão da aplicação é somente `classpath:db/migration`. As seeds repetíveis de desenvolvimento ficam separadas em `classpath:db/seed/dev` e só são adicionadas pelo Compose por meio de `AGENDA_FLYWAY_LOCATIONS`. Portanto, um runtime que não defina essa variável não recebe dados de demonstração.
+O caminho comum, de homologação e de produção é somente `classpath:db/migration`. As seeds repetíveis de desenvolvimento ficam separadas em `classpath:db/seed/dev` e são adicionadas pelo profile `test`, ativado por padrão no Compose. `homo` e `prod` não recebem dados de demonstração.
 
 ## Padrões utilizados
 
@@ -126,9 +126,9 @@ O caminho padrão da aplicação é somente `classpath:db/migration`. As seeds r
 | DTO | Records de entrada/saída e wrapper de paginação | Login e usuário expõem entidades JPA nos contratos |
 | Mapper | MapStruct com `componentModel = "spring"` | `UserController` repete atribuições já feitas pelo mapper |
 | Injeção de dependência | Beans gerenciados pelo Spring | Mistura construtor, Lombok e field injection; listener usa estado estático |
-| JWT stateless | Filtro por requisição, sem sessão de servidor | Cookie e token têm tempos diferentes; configuração de produção não está separada |
+| JWT stateless | Filtro por requisição, sem sessão de servidor; segredo externo obrigatório | Cookie e token têm tempos diferentes; atributos do cookie não variam por ambiente |
 | Database migration | Flyway versiona o schema PostgreSQL; seeds de desenvolvimento têm caminho separado | Os scripts atuais constroem uma base PostgreSQL nova, não convertem uma base MySQL existente |
-| Externalized configuration | Conexão e segredo vêm do ambiente; o Compose fornece defaults locais | O segredo JWT ainda possui fallback na configuração da aplicação |
+| Externalized configuration | Conexão e segredo vêm do ambiente; profiles `test`, `homo` e `prod` controlam seeds e logs | O Compose fornece defaults locais e não deve ser promovido para `homo`/`prod` |
 
 ## Regras arquiteturais existentes
 
@@ -172,13 +172,13 @@ Como regra-alvo geral, tenant e autorização devem ser derivados da sessão; o 
 | Spring Data JPA/Hibernate | Gerenciada pelo Spring Boot | Persistência de todas as entidades; forte dependência das anotações JPA |
 | Spring Security | Gerenciada pelo Spring Boot | Autenticação, autorização por papel, CORS e filtro JWT |
 | PostgreSQL JDBC Driver | Gerenciada pelo Spring Boot | Único driver configurado |
-| PostgreSQL | 18.1 no ambiente validado, pela imagem `bitnami/postgresql:latest` | Porta `5432`; usa `UUID`, `jsonb`, checks e `timestamptz`; `latest` é uma tag móvel |
+| PostgreSQL | 18.1 no ambiente validado, pela imagem `bitnami/postgresql:18` | Porta `5432`; usa `UUID`, `jsonb`, checks e `timestamptz`; ambientes compartilhados devem fixar tag imutável/digest |
 | Flyway | 11.14.1 | Fonte de verdade do schema; suporte PostgreSQL pelo módulo `flyway-database-postgresql` |
 | MapStruct | 1.5.5.Final | Geração de mappers no compile; processor está como dependência `provided` |
 | Lombok | Gerenciada pelo Spring Boot | Geração de builders, construtores e accessors |
 | Auth0 Java JWT | 4.4.0 | Emissão e validação de tokens HMAC |
 | Jackson | Gerenciada pelo Spring Boot | JSON HTTP e suporte ao mapeamento Hibernate da lista de patologias para `jsonb` |
-| Docker/Compose | Imagens Temurin 21, Maven 3.9.9 e `bitnami/postgresql:latest` | Build em duas etapas, API com usuário não root e dados PostgreSQL no volume `postgresql_data` |
+| Docker/Compose | Imagens Temurin 21, Maven 3.9.9 e `bitnami/postgresql:18` | Build em duas etapas, API com usuário não root e dados PostgreSQL no volume `postgresql_data` |
 
 O sistema não possui adaptadores que permitam trocar PostgreSQL, Spring Security ou JPA sem alteração ampla no código e nas migrations.
 
@@ -219,7 +219,7 @@ Um `flyway repair` não converte schema ou dados e não deve ser usado para simp
 ### Altos
 
 1. A regra pública de cadastro aponta para `/auth/register/**`, rota inexistente; o endpoint real tem outra proteção.
-2. O JWT possui segredo default, o cookie sempre usa `secure=false`, e token/cookie expiram em duas e uma hora, respectivamente.
+2. O cookie sempre usa `secure=false`, e token/cookie expiram em duas e uma hora, respectivamente.
 3. O mapper de agendamento atribui `null` ao status quando o request omite o campo, anulando o default da entidade e violando a coluna `NOT NULL`.
 4. `CodeGeneratorListener` calcula `MAX(code) + 1`; inserções concorrentes podem gerar o mesmo código. O uso de repositories estáticos também dificulta testes e ciclos de contexto.
 5. A detecção de paciente duplicado é uma consulta seguida de insert, sem restrição correspondente no banco, e é global entre clínicas. Há condição de corrida.
@@ -232,7 +232,7 @@ Um `flyway repair` não converte schema ou dados e não deve ser usado para simp
 - `@Valid` é aplicado a DTOs que não possuem constraints (`AuthenticationDTO`, `RegisterDTO`, `PatientRequestDTO`).
 - O endpoint de cadastro declara `UserResponseDTO`, mas retorna HTTP 200 sem corpo.
 - `@CrossOrigin(origins = "http:localhost:3000")` está sem `//` no controller de autenticação e conflita com a configuração global correta.
-- `spring.jpa.show-sql=true` e loggers SQL em `DEBUG`/`TRACE` podem expor dados e gerar volume excessivo fora do desenvolvimento.
+- O profile `test` habilita o logger SQL em `DEBUG`, mas mantém os valores dos parâmetros fora dos logs; ainda assim, ele deve ser usado somente em bases locais/descartáveis.
 - `appointmentDate` já contém data e hora, mas `hours` armazena outra hora sem validação de consistência.
 - Ainda não há transições de status, remarcação, cancelamento, recorrência nem horizonte máximo de agendamento.
 - Injeção de dependência, caminhos REST, idioma de pacotes e estratégia de exceções são inconsistentes.
@@ -263,7 +263,7 @@ Um `flyway repair` não converte schema ou dados e não deve ser usado para simp
 5. Introduzir testes de segurança, service, repository/migration e contratos dos endpoints.
 6. Remover dependências de repository dos controllers e do listener JPA.
 7. Padronizar rotas, injeção por construtor, nomenclatura e DTOs.
-8. Separar configuração local/produção e reduzir logs sensíveis.
+8. Automatizar a validação dos profiles e integrar segredos externos ao processo de deploy.
 
 ### Testes mínimos para cada novo fluxo
 
@@ -272,7 +272,7 @@ Um `flyway repair` não converte schema ou dados e não deve ser usado para simp
 - Registro inexistente, duplicado e concorrência relevante.
 - Compatibilidade entre enum Java, constraints PostgreSQL e mapeamento JPA/Hibernate.
 - Serialização garantindo ausência de `password` e detalhes internos.
-- Aplicação das migrations em banco PostgreSQL vazio, sem seeds por padrão, e com seeds quando `AGENDA_FLYWAY_LOCATIONS` as habilitar.
+- Aplicação das migrations em banco PostgreSQL vazio com `homo`/`prod`, e com seeds no profile `test`; validar também a sobrescrita por `AGENDA_FLYWAY_LOCATIONS`.
 
 ## Manutenção desta documentação
 
@@ -281,7 +281,7 @@ Ao alterar controllers, DTOs, entidades, services, regras de segurança, depend�
 1. Atualize o README do pacote afetado.
 2. Atualize as tabelas de endpoints, dependências, riscos e módulos deste documento quando aplicável.
 3. Atualize `OBJETIVO_DO_SISTEMA.md` se o fluxo ou o escopo de produto mudar.
-4. Confirme a documentação por busca de imports/chamadas e execute `./mvnw test`.
+4. Confirme a documentação por busca de imports/chamadas e execute `./mvnw clean verify`.
 5. Marque interpretações não comprovadas como **Hipótese**.
 
 Os READMEs de pacote são um inventário do estado atual; este documento é a referência para relações e regras transversais.

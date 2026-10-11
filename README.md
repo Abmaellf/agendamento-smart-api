@@ -35,6 +35,7 @@ Sistema de gestão API - de sistema de agendamentos - destinado a todas as área
 
 - [Índice da documentação](docs/README.md)
 - [Arquitetura do Sistema](docs/ARQUITETURA_DO_SISTEMA.md)
+- [Profiles e build](docs/PROFILES_E_BUILD.md)
 - [Objetivo do sistema](docs/OBJETIVO_DO_SISTEMA.md)
 - [Requisitos confirmados do MVP](docs/REQUISITOS_DO_MVP.md)
 - [Entrevista de descoberta](docs/ENTREVISTA_DE_DESCOBERTA.md)
@@ -52,13 +53,24 @@ O backend implementa a criação manual de agendamento com unidade, serviço, pr
 
 ## Ambiente local integrado validado
 
-O ambiente usado pelos testes da agenda manual é iniciado na raiz deste repositório:
+O ambiente completo usado pelos testes da agenda manual é iniciado na raiz deste repositório:
 
 ```bash
-docker compose up -d --build
+export JWT_SECRET='<segredo-local-longo-e-aleatorio>'
+docker compose up -d --build --wait
 docker compose ps
 docker compose logs -f api
 ```
+
+O Compose ativa o profile Spring `test` por padrão. Consulte [Profiles e build](docs/PROFILES_E_BUILD.md) para executar em teste, homologação ou produção.
+
+Para executar a API no IntelliJ e manter somente o PostgreSQL no Docker:
+
+```bash
+docker compose up -d --wait db
+```
+
+Nesse fluxo, o IntelliJ conecta em `jdbc:postgresql://localhost:5432/agendamento-smart-api`; `db:5432` é um endereço exclusivo da rede interna do Compose.
 
 Serviços:
 
@@ -66,15 +78,15 @@ Serviços:
 - PostgreSQL: `localhost:5432`, publicado apenas em `127.0.0.1` por padrão;
 - front-end irmão: `http://localhost:3000` quando iniciado com `npm run dev -- --host 0.0.0.0`.
 
-O Compose usa `bitnami/postgresql:latest` — PostgreSQL 18.1 no ambiente validado —, mantém os dados no volume nomeado `postgresql_data` e conecta a API por `jdbc:postgresql://db:5432/...`. Como `latest` é uma tag móvel, confirme a versão resolvida antes de promover a imagem. O schema PostgreSQL usa `UUID` nativo para identificadores, `jsonb` para patologias e `timestamptz` (`TIMESTAMP WITH TIME ZONE`) para instantes absolutos de agendamento e auditoria. As migrations são executadas pelo Flyway `11.14.1`.
+O Compose usa `bitnami/postgresql:18` — PostgreSQL 18.1 no ambiente validado —, mantém os dados no volume nomeado `postgresql_data` e conecta a API containerizada por `jdbc:postgresql://db:5432/...`. A tag limita upgrades à versão principal 18; para ambientes compartilhados, prefira uma tag imutável ou digest já homologado. O schema PostgreSQL usa `UUID` nativo para identificadores, `jsonb` para patologias e `timestamptz` (`TIMESTAMP WITH TIME ZONE`) para instantes absolutos de agendamento e auditoria. As migrations são executadas pelo Flyway `11.14.1`.
 
-Por padrão, a aplicação carrega somente `classpath:db/migration`. O Compose habilita deliberadamente os dados de desenvolvimento com:
+Os profiles `homo` e `prod` carregam somente `classpath:db/migration`. O profile `test`, ativado por padrão no Compose, também habilita deliberadamente os dados de desenvolvimento em:
 
 ```text
-AGENDA_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/seed/dev
+classpath:db/migration,classpath:db/seed/dev
 ```
 
-Assim, executar a aplicação fora do Compose não insere seeds, salvo se essa variável for definida explicitamente. As migrations até `V008__create_table_scheduling.sql` criam o schema e a antiga tabela de agendamentos; a `V009` renomeia a estrutura para `APPOINTMENT`. A seed repetível histórica `R__008_seed_scheduling.sql` conserva o nome por compatibilidade de nomenclatura, embora opere sobre `APPOINTMENT`.
+Fora do Compose, o profile `test` também inclui as seeds por padrão; use `AGENDA_FLYWAY_LOCATIONS=classpath:db/migration` para suprimi-las. As migrations até `V008__create_table_scheduling.sql` criam o schema e a antiga tabela de agendamentos; a `V009` renomeia a estrutura para `APPOINTMENT`. A seed repetível histórica `R__008_seed_scheduling.sql` conserva o nome por compatibilidade de nomenclatura, embora opere sobre `APPOINTMENT`.
 
 > **Atenção na migração:** o volume e os dados do MySQL anterior não são convertidos nem importados automaticamente. `postgresql_data` é um armazenamento separado. Dados que precisem ser preservados exigem um processo explícito de exportação, transformação e importação para PostgreSQL antes da troca definitiva.
 
@@ -84,20 +96,20 @@ Para reaplicar migrations e seeds integralmente, use apenas uma base descartáve
 
 ```bash
 docker compose down -v
-docker compose up -d --build
+docker compose up -d --build --wait
 ```
 
 Se uma tentativa anterior de criação deixar apenas a API fora da rede `backend`, preserve o volume e recrie só o contêiner efêmero:
 
 ```bash
 docker compose stop api
-docker compose up -d --force-recreate api
+JWT_SECRET='<segredo-local-longo-e-aleatorio>' docker compose up -d --force-recreate api
 ```
 
 Validação rápida:
 
 ```bash
-./mvnw test
+./mvnw clean verify
 ```
 
 O roteiro completo de caixa branca e Postman está no front-end, em `specs/001-criar-agendamento-manual/como-executar-testes.md`.
@@ -113,9 +125,18 @@ O roteiro completo de caixa branca e Postman está no front-end, em `specs/001-c
 
 ## Comandos
 
+Somente PostgreSQL para executar a API pelo IntelliJ:
+
 ```bash
-docker compose up -d --build
-docker compose ps
+docker compose up -d --wait db
+docker compose ps db
+```
+
+API e PostgreSQL no Docker:
+
+```bash
+export JWT_SECRET='<segredo-local-longo-e-aleatorio>'
+docker compose up -d --build --wait
 docker compose logs -f api
 ```
 
@@ -123,9 +144,10 @@ Para executar a API pelo Maven fora do Compose, mantenha o PostgreSQL ativo e in
 
 ```bash
 AGENDA_URL=jdbc:postgresql://localhost:5432/agendamento-smart-api \
-AGENDA_DB_USER=agenda \
-AGENDA_DB_PASSWORD=agenda-local-password \
-./mvnw spring-boot:run
+AGENDA_DB_USER='<mesmo-usuario-do-compose>' \
+AGENDA_DB_PASSWORD='<mesma-senha-do-compose>' \
+JWT_SECRET='<segredo-local-longo-e-aleatorio>' \
+./mvnw -Ptest spring-boot:run
 ```
 
 ## Licença

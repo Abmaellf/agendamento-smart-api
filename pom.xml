@@ -131,4 +131,30 @@
 		</plugins>
 	</build>
 
+	<!--
+		Atalhos de execução para o Spring Boot Maven Plugin.
+		Eles selecionam o profile Spring somente em spring-boot:run;
+		o artefato gerado por clean verify continua sendo único.
+	-->
+	<profiles>
+		<profile>
+			<id>test</id>
+			<properties>
+				<spring-boot.run.profiles>test</spring-boot.run.profiles>
+			</properties>
+		</profile>
+		<profile>
+			<id>homo</id>
+			<properties>
+				<spring-boot.run.profiles>homo</spring-boot.run.profiles>
+			</properties>
+		</profile>
+		<profile>
+			<id>prod</id>
+			<properties>
+				<spring-boot.run.profiles>prod</spring-boot.run.profiles>
+			</properties>
+		</profile>
+	</profiles>
+
 </project>

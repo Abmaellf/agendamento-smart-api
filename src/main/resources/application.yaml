@@ -18,7 +18,7 @@ spring:
   # JPA / HIBERNATE
   # ============================================================
   jpa:
-    show-sql: true
+    show-sql: false
 
     hibernate:
       ddl-auto: validate
@@ -52,7 +52,7 @@ spring:
 api:
   security:
     token:
-      secret: ${JWT_SECRET:my-secret-key}
+      secret: ${JWT_SECRET}
 
 
 # ============================================================
@@ -67,13 +67,8 @@ project:
 # ============================================================
 logging:
   level:
-    org:
-      hibernate:
-        SQL: DEBUG
-        type:
-          descriptor:
-            sql: TRACE
-
-      springframework:
-        jdbc:
-          core: DEBUG
+    root: INFO
+    com.agendamento.smart: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+    org.springframework.jdbc.core: WARN
