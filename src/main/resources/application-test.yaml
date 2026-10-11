@@ -1,0 +1,20 @@
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  jpa:
+    # SQL vai pelo logger abaixo; show-sql duplicaria as instrucoes no console.
+    show-sql: false
+
+  flyway:
+    locations: ${AGENDA_FLYWAY_LOCATIONS:classpath:db/migration,classpath:db/seed/dev}
+
+logging:
+  level:
+    root: INFO
+    com.agendamento.smart: DEBUG
+    org.hibernate.SQL: DEBUG
+    # Nao registre valores de parametros: eles podem conter dados pessoais.
+    org.hibernate.orm.jdbc.bind: WARN
+    org.springframework.jdbc.core: DEBUG

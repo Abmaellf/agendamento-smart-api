@@ -33,4 +33,8 @@ build/
 .vscode/
 ./home
 /home
-docker-compose.yml
+
+### Local environment files ###
+.env
+.env.*
+!.env.example

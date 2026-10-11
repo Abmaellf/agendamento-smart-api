@@ -150,22 +150,23 @@ O ciclo-alvo confirmado usa `AGENDADO`, `CONFIRMADO`, `EM_ATENDIMENTO`, `CONCLUI
 
 - Aplicação Java 21/Spring Boot executada como JAR único.
 - Porta HTTP fixa `8080` na configuração da aplicação.
-- Banco PostgreSQL 18.1 no ambiente validado; o Compose usa a tag móvel `bitnami/postgresql:latest`, publica por padrão `127.0.0.1:5432` e persiste em `postgresql_data`.
+- Banco PostgreSQL 18.1 no ambiente validado; o Compose limita a imagem à versão principal `bitnami/postgresql:18`, publica por padrão `127.0.0.1:5432` e persiste em `postgresql_data`.
 - Schema gerenciado pelo Flyway `11.14.1` na inicialização, com `baseline-on-migrate=false` e `out-of-order=false`.
 - Identificadores são persistidos como `UUID` nativo, patologias como `jsonb` e instantes absolutos de agendamento/auditoria como `timestamptz`.
 - Configuração de conexão por `AGENDA_URL`, `AGENDA_DB_USER` e `AGENDA_DB_PASSWORD`.
-- A aplicação carrega somente `classpath:db/migration` por padrão; o Compose acrescenta as seeds de desenvolvimento de `classpath:db/seed/dev` por `AGENDA_FLYWAY_LOCATIONS`.
-- Assinatura JWT por `JWT_SECRET`, com default configurado para desenvolvimento.
+- Profiles Spring `test`, `homo` e `prod`, selecionados no runtime sobre um único JAR.
+- `homo` e `prod` carregam somente `classpath:db/migration`; `test` e o Compose também incluem as seeds de desenvolvimento de `classpath:db/seed/dev`.
+- Assinatura JWT por `JWT_SECRET` obrigatório, sem segredo default no repositório.
 - Origens CORS globais: frontend Vercel do projeto e `http://localhost:3000`.
 - Dockerfile multi-stage compila com Maven/Temurin 21 e executa com JRE 21 como usuário não root.
 - O Compose espera a saúde do PostgreSQL antes de iniciar a API e expõe banco e API em endereços/portas configuráveis.
-- Logs SQL estão habilitados em nível detalhado.
+- Logs SQL detalhados ficam restritos ao profile `test`.
 
 O volume `postgresql_data` é separado do volume usado pelo MySQL anterior. Nem o volume nem os dados MySQL são migrados automaticamente pelo Compose ou pelo Flyway; ambientes com dados a preservar precisam de migração explícita de dados antes da troca.
 
 `flyway repair` não é um mecanismo de migração de banco ou dados e não deve ser executado cegamente para reconciliar o histórico MySQL com o schema PostgreSQL.
 
-Não há perfil Spring separado para desenvolvimento, teste e produção. Também não há testes automatizados ou ambiente de teste em memória/banco dedicado.
+Não há profile `dev`: o Compose local usa `test`. Também não há testes automatizados ou ambiente de teste em memória; a validação integrada depende de PostgreSQL.
 
 ## Limites atuais que afetam o objetivo
 

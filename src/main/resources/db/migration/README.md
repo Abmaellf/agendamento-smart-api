@@ -41,7 +41,7 @@ Os identificadores usam `UUID` nativo. `pathology` usa `jsonb`; `starts_at`, `cr
 
 Startup -> conexão PostgreSQL -> histórico Flyway -> migrations pendentes em ordem -> schema validado pelo Hibernate/JPA.
 
-`application.yaml` carrega apenas `classpath:db/migration` por padrão. O Compose define `AGENDA_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/seed/dev` para incluir as seeds repetíveis somente no ambiente local integrado.
+`application.yaml`, `application-homo.yaml` e `application-prod.yaml` carregam apenas `classpath:db/migration`. O profile `test` e o Compose incluem `classpath:db/seed/dev` para disponibilizar as seeds repetíveis somente no ambiente local/de teste.
 
 ## Arquivos críticos
 

@@ -12,11 +12,11 @@ services:
       db:
         condition: service_healthy
     environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-test}
       AGENDA_URL: jdbc:postgresql://db:5432/${AGENDA_DB_NAME:-agendamento-smart-api}
       AGENDA_DB_USER: ${AGENDA_DB_USER:-agenda}
       AGENDA_DB_PASSWORD: ${AGENDA_DB_PASSWORD:-agenda-local-password}
-      AGENDA_FLYWAY_LOCATIONS: classpath:db/migration,classpath:db/seed/dev
-      JWT_SECRET: ${JWT_SECRET:-local-development-secret-change-me}
+      JWT_SECRET:
     ports:
       - "${AGENDA_API_BIND_ADDRESS:-0.0.0.0}:${AGENDA_API_PORT:-8080}:8080"
     read_only: true
