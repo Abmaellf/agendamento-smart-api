@@ -36,6 +36,7 @@ Sistema de gestão API - de sistema de agendamentos - destinado a todas as área
 - [Índice da documentação](docs/README.md)
 - [Arquitetura do Sistema](docs/ARQUITETURA_DO_SISTEMA.md)
 - [Profiles e build](docs/PROFILES_E_BUILD.md)
+- [Deploy de produção no Ubuntu com Docker](docs/DEPLOY_PRODUCAO_DOCKER_UBUNTU.md)
 - [Objetivo do sistema](docs/OBJETIVO_DO_SISTEMA.md)
 - [Requisitos confirmados do MVP](docs/REQUISITOS_DO_MVP.md)
 - [Entrevista de descoberta](docs/ENTREVISTA_DE_DESCOBERTA.md)
@@ -78,7 +79,7 @@ Serviços:
 - PostgreSQL: `localhost:5432`, publicado apenas em `127.0.0.1` por padrão;
 - front-end irmão: `http://localhost:3000` quando iniciado com `npm run dev -- --host 0.0.0.0`.
 
-O Compose usa `bitnami/postgresql:18` — PostgreSQL 18.1 no ambiente validado —, mantém os dados no volume nomeado `postgresql_data` e conecta a API containerizada por `jdbc:postgresql://db:5432/...`. A tag limita upgrades à versão principal 18; para ambientes compartilhados, prefira uma tag imutável ou digest já homologado. O schema PostgreSQL usa `UUID` nativo para identificadores, `jsonb` para patologias e `timestamptz` (`TIMESTAMP WITH TIME ZONE`) para instantes absolutos de agendamento e auditoria. As migrations são executadas pelo Flyway `11.14.1`.
+O Compose atualmente usa `bitnami/postgresql:latest`, mantém os dados no volume nomeado `postgresql_data` e conecta a API containerizada por `jdbc:postgresql://db:5432/...`. A tag flutuante não limita upgrades de versão principal; antes de usar um ambiente persistente ou compartilhado, substitua-a por uma tag imutável ou digest já homologado. O schema PostgreSQL usa `UUID` nativo para identificadores, `jsonb` para patologias e `timestamptz` (`TIMESTAMP WITH TIME ZONE`) para instantes absolutos de agendamento e auditoria. As migrations são executadas pelo Flyway `11.14.1`.
 
 Os profiles `homo` e `prod` carregam somente `classpath:db/migration`. O profile `test`, ativado por padrão no Compose, também habilita deliberadamente os dados de desenvolvimento em:
 

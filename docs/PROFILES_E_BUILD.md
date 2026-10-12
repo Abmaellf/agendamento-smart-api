@@ -200,7 +200,7 @@ Ele utiliza seeds e valores locais; não o promova diretamente para homologaçã
 
 A API containerizada usa `jdbc:postgresql://db:5432/...`, enquanto a API executada no IntelliJ usa `jdbc:postgresql://localhost:5432/...`. O `depends_on` aguarda a saúde do banco apenas no fluxo totalmente containerizado; no fluxo IntelliJ, essa espera é feita por `docker compose up --wait db`.
 
-A imagem do PostgreSQL está limitada à versão principal `18`, evitando uma troca acidental de versão principal. Em ambientes compartilhados, fixe também a versão imutável ou o digest homologado e mantenha backup antes de atualizar.
+A imagem do PostgreSQL usa atualmente a tag flutuante `latest`, que pode trocar até a versão principal. Antes de usar um ambiente persistente ou compartilhado, substitua-a por uma tag imutável ou digest homologado e mantenha backup antes de atualizar.
 
 Não execute o profile `prod` no IntelliJ apontando para o banco de produção: a inicialização executa o Flyway e pode aplicar migrations. Produção deve usar pipeline, segredo gerenciado, backup e plano de rollback.
 

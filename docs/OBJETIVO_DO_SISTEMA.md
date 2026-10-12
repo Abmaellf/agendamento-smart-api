@@ -150,7 +150,7 @@ O ciclo-alvo confirmado usa `AGENDADO`, `CONFIRMADO`, `EM_ATENDIMENTO`, `CONCLUI
 
 - Aplicação Java 21/Spring Boot executada como JAR único.
 - Porta HTTP fixa `8080` na configuração da aplicação.
-- Banco PostgreSQL 18.1 no ambiente validado; o Compose limita a imagem à versão principal `bitnami/postgresql:18`, publica por padrão `127.0.0.1:5432` e persiste em `postgresql_data`.
+- Banco PostgreSQL 18.1 no ambiente anteriormente validado; o Compose atual usa a tag flutuante `bitnami/postgresql:latest`, publica por padrão `127.0.0.1:5432` e persiste em `postgresql_data`. Ambientes persistentes devem fixar tag imutável ou digest homologado.
 - Schema gerenciado pelo Flyway `11.14.1` na inicialização, com `baseline-on-migrate=false` e `out-of-order=false`.
 - Identificadores são persistidos como `UUID` nativo, patologias como `jsonb` e instantes absolutos de agendamento/auditoria como `timestamptz`.
 - Configuração de conexão por `AGENDA_URL`, `AGENDA_DB_USER` e `AGENDA_DB_PASSWORD`.

@@ -5,6 +5,7 @@ Este diretório separa três perspectivas que não devem ser confundidas:
 - [Objetivo do sistema](OBJETIVO_DO_SISTEMA.md): capacidades realmente executáveis no código atual;
 - [Arquitetura do Sistema](ARQUITETURA_DO_SISTEMA.md): estrutura, dependências, riscos e estado técnico observado;
 - [Profiles e build](PROFILES_E_BUILD.md): configuração dos ambientes `test`, `homo` e `prod`, build e execução;
+- [Deploy de produção no Ubuntu com Docker](DEPLOY_PRODUCAO_DOCKER_UBUNTU.md): preparação do servidor, `.env`, deploy, validação, backup e atualização;
 - [Requisitos do MVP](REQUISITOS_DO_MVP.md): comportamento confirmado para a evolução do produto e da API;
 - [Entrevista de descoberta](ENTREVISTA_DE_DESCOBERTA.md): decisões ainda abertas e respostas que deverão atualizar os requisitos.
 

@@ -172,13 +172,13 @@ Como regra-alvo geral, tenant e autorização devem ser derivados da sessão; o 
 | Spring Data JPA/Hibernate | Gerenciada pelo Spring Boot | Persistência de todas as entidades; forte dependência das anotações JPA |
 | Spring Security | Gerenciada pelo Spring Boot | Autenticação, autorização por papel, CORS e filtro JWT |
 | PostgreSQL JDBC Driver | Gerenciada pelo Spring Boot | Único driver configurado |
-| PostgreSQL | 18.1 no ambiente validado, pela imagem `bitnami/postgresql:18` | Porta `5432`; usa `UUID`, `jsonb`, checks e `timestamptz`; ambientes compartilhados devem fixar tag imutável/digest |
+| PostgreSQL | 18.1 no ambiente anteriormente validado; o Compose atual usa `bitnami/postgresql:latest` | Porta `5432`; usa `UUID`, `jsonb`, checks e `timestamptz`; a tag atual é flutuante e ambientes persistentes devem fixar tag imutável/digest |
 | Flyway | 11.14.1 | Fonte de verdade do schema; suporte PostgreSQL pelo módulo `flyway-database-postgresql` |
 | MapStruct | 1.5.5.Final | Geração de mappers no compile; processor está como dependência `provided` |
 | Lombok | Gerenciada pelo Spring Boot | Geração de builders, construtores e accessors |
 | Auth0 Java JWT | 4.4.0 | Emissão e validação de tokens HMAC |
 | Jackson | Gerenciada pelo Spring Boot | JSON HTTP e suporte ao mapeamento Hibernate da lista de patologias para `jsonb` |
-| Docker/Compose | Imagens Temurin 21, Maven 3.9.9 e `bitnami/postgresql:18` | Build em duas etapas, API com usuário não root e dados PostgreSQL no volume `postgresql_data` |
+| Docker/Compose | Imagens Temurin 21, Maven 3.9.9 e `bitnami/postgresql:latest` | Build em duas etapas, API com usuário não root e dados PostgreSQL no volume `postgresql_data`; PostgreSQL precisa de tag/digest fixo antes de ambiente persistente |
 
 O sistema não possui adaptadores que permitam trocar PostgreSQL, Spring Security ou JPA sem alteração ampla no código e nas migrations.
 

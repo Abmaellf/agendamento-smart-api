@@ -9,14 +9,14 @@ services:
     restart: unless-stopped
     init: true
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-test}
-      AGENDA_URL: jdbc:postgresql://db:5432/${AGENDA_DB_NAME:-agendamento-smart-api}
-      AGENDA_DB_USER: ${AGENDA_DB_USER:-agenda}
-      AGENDA_DB_PASSWORD: ${AGENDA_DB_PASSWORD:-agenda-local-password}
-      JWT_SECRET:
+      AGENDA_URL: "jdbc:postgresql://postgres:5432/${AGENDA_DB_NAME:-agendamento-smart-api}"
+      AGENDA_DB_USER: "${AGENDA_DB_USER:-agenda}"
+      AGENDA_DB_PASSWORD: "${AGENDA_DB_PASSWORD:-agenda-local-password}"
+      JWT_SECRET: "${JWT_SECRET:-}"
     ports:
       - "${AGENDA_API_BIND_ADDRESS:-0.0.0.0}:${AGENDA_API_PORT:-8080}:8080"
     read_only: true
@@ -32,25 +32,24 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  db:
-    image: bitnami/postgresql:latest
+  postgres:
+    image: postgres:18
     restart: unless-stopped
     environment:
-      POSTGRESQL_USERNAME: ${AGENDA_DB_USER:-agenda}
-      POSTGRESQL_PASSWORD: ${AGENDA_DB_PASSWORD:-agenda-local-password}
-      POSTGRESQL_DATABASE: ${AGENDA_DB_NAME:-agendamento-smart-api}
-      POSTGRESQL_TIMEZONE: UTC
+      POSTGRES_USER: "${AGENDA_DB_USER:-agenda}"
+      POSTGRES_PASSWORD: "${AGENDA_DB_PASSWORD:-agenda-local-password}"
+      POSTGRES_DB: "${AGENDA_DB_NAME:-agendamento-smart-api}"
     ports:
       - "${AGENDA_DB_BIND_ADDRESS:-127.0.0.1}:${AGENDA_DB_PORT:-5432}:5432"
     volumes:
-      - postgresql_data:/bitnami/postgresql
+      - postgresql_data:/var/lib/postgresql
     healthcheck:
       test:
         - CMD-SHELL
-        - pg_isready --host=127.0.0.1 --port=5432 --username="$${POSTGRESQL_USERNAME}" --dbname="$${POSTGRESQL_DATABASE}"
+        - pg_isready --host=127.0.0.1 --port=5432 --username="$${POSTGRES_USER}" --dbname="$${POSTGRES_DB}"
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
       start_period: 30s
     security_opt:
       - no-new-privileges:true
