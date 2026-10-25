@@ -22,6 +22,7 @@ Centralizar configuração de runtime e migrations empacotadas no classpath.
 - API na porta 8080.
 - SQL em `DEBUG` somente em `test`, sem registrar valores dos parâmetros; os demais profiles usam níveis seguros.
 - Segredo JWT obrigatório por `JWT_SECRET`, sem fallback no repositório.
+- `JWT_COOKIE_SECURE` controla o atributo `Secure` do cookie JWT; o padrão é `false` fora de produção e `true` no profile `prod`.
 
 ## Dependências internas e externas
 

@@ -57,7 +57,7 @@ Expor login, listagem de usuários e consulta do usuário autenticado.
 
 - `LoginResponseDTO` e a listagem serializam `User`; `password` não está ignorado na serialização, permitindo exposição do hash.
 - O controller acessa `UserRepository` diretamente.
-- O cookie tem duração de uma hora, enquanto o token expira em duas horas, e usa `secure=false` em todos os ambientes.
+- O cookie tem duração de uma hora, enquanto o token expira em duas horas. `JWT_COOKIE_SECURE` controla o atributo `Secure`; o profile `prod` usa `true` por padrão e os demais usam `false`.
 - A origem `http:localhost:3000` declarada por `@CrossOrigin` está malformada; a configuração global usa `http://localhost:3000`.
 - Há `System.out.println` no fluxo de login.
 - `AuthenticationDTO` não possui constraints, portanto `@Valid` não valida login/senha.

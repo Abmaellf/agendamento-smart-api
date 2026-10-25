@@ -62,5 +62,5 @@ Header/cookie -> `SecurityFilter` -> validação do JWT -> consulta de usuário 
 - Token inválido retorna subject vazio e ainda provoca busca por login vazio.
 - O segredo JWT é obrigatório e vem de `JWT_SECRET`; a inicialização falha quando ele não é informado.
 - Expiração do JWT usa offset fixo `-04:00`; o cookie dura uma hora e o JWT duas.
-- Cookie de login usa `secure=false`, inclusive quando acessado pela origem de produção configurada.
+- `JWT_COOKIE_SECURE` controla o atributo `Secure` do cookie JWT; o profile `prod` usa `true` por padrão, mas a origem CORS do frontend continua definida estaticamente no controller e na configuração global.
 - A injeção por campo contrasta com a convenção de construtor recomendada.

@@ -10,7 +10,7 @@ import com.agendamento.smart.service.UserService;
 import com.agendamento.smart.repository.UnitRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +28,6 @@ import java.util.Map;
 @CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
 @RestController
 @RequestMapping("auth")
-@AllArgsConstructor
 public class AuthenticationController {
 
     /* Esse serviço abaixo esta injetado na classe SecurityConfiguration como @Bean*/
@@ -37,6 +36,21 @@ public class AuthenticationController {
     private final TokenService tokenService;
     private final UserService userService;
     private final UnitRepository unitRepository;
+    private final boolean jwtCookieSecure;
+
+    public AuthenticationController(AuthenticationManager authenticationManager,
+                                    UserRepository userRepository,
+                                    TokenService tokenService,
+                                    UserService userService,
+                                    UnitRepository unitRepository,
+                                    @Value("${api.security.cookie.secure:false}") boolean jwtCookieSecure) {
+        this.authenticationManager = authenticationManager;
+        this.userRepository = userRepository;
+        this.tokenService = tokenService;
+        this.userService = userService;
+        this.unitRepository = unitRepository;
+        this.jwtCookieSecure = jwtCookieSecure;
+    }
 
     @CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
     @PostMapping("/login")
@@ -52,7 +66,7 @@ public class AuthenticationController {
 
         ResponseCookie cookie = ResponseCookie.from("jwt", token)
                 .httpOnly(true)              // 👈 não acessível via JS
-                .secure(false)             // true em produção com HTTPS // false para local com HTTP
+                .secure(jwtCookieSecure)
                 .path("/")
                 .maxAge(Duration.ofHours(1)) // tempo de expiração
                 .sameSite("Lax")

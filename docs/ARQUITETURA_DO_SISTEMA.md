@@ -219,7 +219,7 @@ Um `flyway repair` não converte schema ou dados e não deve ser usado para simp
 ### Altos
 
 1. A regra pública de cadastro aponta para `/auth/register/**`, rota inexistente; o endpoint real tem outra proteção.
-2. O cookie sempre usa `secure=false`, e token/cookie expiram em duas e uma hora, respectivamente.
+2. `JWT_COOKIE_SECURE` controla o atributo `Secure` do cookie; `prod` usa `true` por padrão. Token e cookie expiram em duas e uma hora, respectivamente.
 3. O mapper de agendamento atribui `null` ao status quando o request omite o campo, anulando o default da entidade e violando a coluna `NOT NULL`.
 4. `CodeGeneratorListener` calcula `MAX(code) + 1`; inserções concorrentes podem gerar o mesmo código. O uso de repositories estáticos também dificulta testes e ciclos de contexto.
 5. A detecção de paciente duplicado é uma consulta seguida de insert, sem restrição correspondente no banco, e é global entre clínicas. Há condição de corrida.
