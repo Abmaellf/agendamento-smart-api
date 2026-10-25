@@ -17,6 +17,7 @@ services:
       AGENDA_DB_USER: "${AGENDA_DB_USER:-agenda}"
       AGENDA_DB_PASSWORD: "${AGENDA_DB_PASSWORD:-agenda-local-password}"
       JWT_SECRET: "${JWT_SECRET:-}"
+      JWT_COOKIE_SECURE: "${JWT_COOKIE_SECURE:-false}"
     ports:
       - "${AGENDA_API_BIND_ADDRESS:-0.0.0.0}:${AGENDA_API_PORT:-8080}:8080"
     read_only: true

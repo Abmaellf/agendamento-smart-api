@@ -9,6 +9,11 @@ spring:
   flyway:
     locations: ${AGENDA_FLYWAY_LOCATIONS:classpath:db/migration}
 
+api:
+  security:
+    cookie:
+      secure: ${JWT_COOKIE_SECURE:true}
+
 logging:
   level:
     root: WARN

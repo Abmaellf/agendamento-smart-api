@@ -145,11 +145,11 @@ O proxy deve ser a única entrada pública da API e deve definir os cabeçalhos
 encaminhar a requisição. Não publique a porta da API para que clientes externos
 não possam contornar o proxy e enviar cabeçalhos encaminhados diretamente.
 
-O cookie JWT é criado atualmente com `.secure(false)` em
-`AuthenticationController`. Faça a opção `Secure` ser verdadeira no profile
-`prod` e mantenha o comportamento HTTP local separado por configuração. HTTPS
-no proxy, por si só, não altera esse atributo do cookie. Confirme também que o
-CORS de produção permite somente a origem real do front-end.
+O cookie JWT recebe o atributo `Secure` conforme `JWT_COOKIE_SECURE`. O profile
+`prod` usa `true` por padrão; mantenha também `JWT_COOKIE_SECURE=true` no
+ambiente de produção. Em `test` e `homo`, o padrão é `false` para HTTP local.
+HTTPS no proxy, por si só, não altera esse atributo do cookie. Confirme também
+que o CORS de produção permite somente a origem real do front-end.
 
 ## 5. Subir e validar a mudança
 

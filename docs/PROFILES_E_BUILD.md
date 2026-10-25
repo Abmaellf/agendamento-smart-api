@@ -23,6 +23,7 @@ Defina valores próprios em cada ambiente:
 | `AGENDA_DB_USER` | Sim | Usuário do banco |
 | `AGENDA_DB_PASSWORD` | Sim | Senha do banco |
 | `JWT_SECRET` | Sim | Segredo exclusivo e forte para assinar os tokens |
+| `JWT_COOKIE_SECURE` | Não | Atributo `Secure` do cookie JWT; padrão `false` em `test`/`homo` e `true` em `prod`. No Compose, defina `true` explicitamente em produção |
 | `AGENDA_FLYWAY_LOCATIONS` | Não | Sobrescreve os locais de migrations/seeds |
 
 Não versione esses valores. Em homologação e produção, injete-os pelo serviço de deploy ou por um gerenciador de segredos.
@@ -68,6 +69,10 @@ export JWT_SECRET='<segredo-longo-e-aleatorio>'
 ```
 
 Troque conexão, usuário, senha e segredo antes de iniciar `homo` ou `prod`. Nunca reutilize o segredo de um ambiente em outro.
+
+No profile `prod`, o cookie JWT usa `Secure` por padrão. Defina
+`JWT_COOKIE_SECURE=true` explicitamente no ambiente de produção; em `test` e
+`homo`, o padrão é `false` para permitir execução local por HTTP.
 
 O profile `test` inclui os dados de demonstração por padrão. Para executar apenas as migrations nesse profile:
 

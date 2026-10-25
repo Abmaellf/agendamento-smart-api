@@ -24,8 +24,8 @@ estes itens antes do *go-live* público:
   homologado; a tag `latest` pode trocar inclusive a versão principal do banco;
 - disponibilize a API somente por HTTPS, atrás de um proxy reverso; publique
   apenas `80` e `443` e não exponha `5432` ou `8080` diretamente;
-- torne o cookie JWT `Secure` em produção; hoje ele está fixado como
-  `secure(false)`;
+- configure `JWT_COOKIE_SECURE=true` para emitir o cookie JWT com `Secure` em
+  produção e sirva a API por HTTPS;
 - impeça que a entidade `User` serialize o campo `password` e revise os
   endpoints que retornam a entidade diretamente;
 - corrija o isolamento por clínica: `GET /patient/list` é público e consulta
@@ -110,6 +110,7 @@ agenda-compose() {
     -u AGENDA_URL \
     -u AGENDA_FLYWAY_LOCATIONS \
     -u JWT_SECRET \
+    -u JWT_COOKIE_SECURE \
     -u AGENDA_API_BIND_ADDRESS \
     -u AGENDA_API_PORT \
     -u APP_VERSION \
@@ -228,6 +229,7 @@ AGENDA_DB_BIND_ADDRESS=127.0.0.1
 AGENDA_DB_PORT=5432
 
 JWT_SECRET=<segredo-hexadecimal-aleatorio-e-exclusivo>
+JWT_COOKIE_SECURE=true
 AGENDA_API_BIND_ADDRESS=127.0.0.1
 AGENDA_API_PORT=8080
 APP_VERSION=<versao-ou-sha-imutavel>
@@ -275,6 +277,7 @@ test -r "$AGENDA_ENV_FILE"
     && test "${AGENDA_DB_USER:-}" != "" \
     && test "${AGENDA_DB_PASSWORD:-}" != "" \
     && test "${JWT_SECRET:-}" != "" \
+    && test "${JWT_COOKIE_SECURE:-}" = "true" \
     && test "${APP_VERSION:-}" != "" \
     && test "${AGENDA_API_BIND_ADDRESS:-}" = "127.0.0.1" \
     && test "${AGENDA_DB_BIND_ADDRESS:-}" = "127.0.0.1" \

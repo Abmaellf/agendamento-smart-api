@@ -51,6 +51,8 @@ spring:
 # ============================================================
 api:
   security:
+    cookie:
+      secure: ${JWT_COOKIE_SECURE:false}
     token:
       secret: ${JWT_SECRET}
 
