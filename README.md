@@ -34,6 +34,7 @@ Sistema de gestão API - de sistema de agendamentos - destinado a todas as área
 ## Documentação técnica
 
 - [Índice da documentação](docs/README.md)
+- [Desenvolvimento SDD com OpenSpec e CodeGraph](docs/SDD_OPENSpec_CODEGRAPH.md)
 - [Arquitetura do Sistema](docs/ARQUITETURA_DO_SISTEMA.md)
 - [Profiles e build](docs/PROFILES_E_BUILD.md)
 - [Deploy de produção no Ubuntu com Docker](docs/DEPLOY_PRODUCAO_DOCKER_UBUNTU.md)

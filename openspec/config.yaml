@@ -1,0 +1,18 @@
+schema: spec-driven
+
+context: |
+  Projeto: agendamento-smart-api, API Java 21 / Spring Boot 3.4.5 com PostgreSQL e Flyway.
+  Idioma dos artefatos: pt-BR; preserve cabeçalhos estruturais e MUST/SHALL do OpenSpec.
+  openspec/specs descreve apenas comportamento observado no código atual.
+  docs/REQUISITOS_DO_MVP.md descreve o alvo e não prova entrega.
+  Catálogo e agenda usam a clínica do usuário autenticado; usuários e pacientes legados
+  ainda não têm isolamento uniforme. Antes de alterar comportamento, crie uma change.
+  Não reescreva histórico arquivado para justificar código atual.
+
+rules:
+  proposal:
+    - Distinguir comportamento atual, mudança proposta e itens fora de escopo.
+  specs:
+    - Cada requisito deve ter ao menos um cenário observável.
+  tasks:
+    - Incluir verificação de autorização e isolamento por clínica quando aplicável.
