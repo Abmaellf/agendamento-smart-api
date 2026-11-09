@@ -21,13 +21,14 @@ Versionar o schema PostgreSQL utilizado pela API.
 - `V007`: cria a associação entre profissionais e serviços.
 - `V008__create_table_scheduling.sql`: cria a estrutura de agendamentos ainda com o nome físico legado `SCHEDULING`.
 - `V009`: renomeia a tabela para `APPOINTMENT`, a coluna temporal legada para `appointment_date` e os nomes físicos associados.
+- `V010`: adiciona status de clínica/unidade, tipo de unidade, vínculo exclusivo do profissional com unidade/usuário, vínculo paciente-unidade e unicidades condicionais de `ADMIN` e MATRIZ.
 
 Os identificadores usam `UUID` nativo. `pathology` usa `jsonb`; `starts_at`, `created_at` e `updated_at` de agendamento usam `timestamptz` (`TIMESTAMP WITH TIME ZONE`). Campos que representam data/hora local sem deslocamento permanecem `TIMESTAMP WITHOUT TIME ZONE`/`TIME WITHOUT TIME ZONE`.
 
 ## Dependências internas e externas
 
 - Internas: entidades e repositories devem permanecer compatíveis com esse schema.
-- Externas: Flyway `11.14.1`, módulo `flyway-database-postgresql` e PostgreSQL 18.1 no ambiente validado.
+- Externas: Flyway `11.14.1`, módulo `flyway-database-postgresql` e PostgreSQL 18 no ambiente validado.
 
 ## Módulos relacionados
 
@@ -43,6 +44,49 @@ Startup -> conexão PostgreSQL -> histórico Flyway -> migrations pendentes em o
 
 `application.yaml`, `application-homo.yaml` e `application-prod.yaml` carregam apenas `classpath:db/migration`. O profile `test` e o Compose incluem `classpath:db/seed/dev` para disponibilizar as seeds repetíveis somente no ambiente local/de teste.
 
+## Pré-verificação e upgrade para V010
+
+Antes de aplicar V010 em uma base com dados, execute a consulta somente leitura
+[`docs/sql/preflight-estrutura-clinica-matriz-vinculos.sql`](../../../../../docs/sql/preflight-estrutura-clinica-matriz-vinculos.sql).
+O relatório procura:
+
+- clínica sem unidade;
+- clínica com zero ou múltiplos usuários `ADMIN`;
+- clínica com mais de uma candidata a MATRIZ;
+- profissional usado em appointments de mais de uma unidade.
+
+A migration atribui `ATIVO` aos registros anteriores. Uma clínica com somente
+uma unidade recebe `MATRIZ`; pacientes recebem todos os vínculos comprovados por
+appointments e, quando não têm histórico, recebem a MATRIZ. Um profissional
+usado em uma única unidade recebe essa unidade e um profissional sem histórico
+recebe a MATRIZ.
+
+Dados ambíguos não são resolvidos por ordem, nome ou UUID: V010 aborta antes de
+tornar os campos obrigatórios. A única exceção é o mapeamento explícito da seed
+de desenvolvimento, revisado no relatório de 2026-11-08:
+
+- `60000000-0000-4000-8000-000000000001` permanece como `MATRIZ`;
+- `60000000-0000-4000-8000-000000000002` é preservada como `FILIAL`;
+- `30000000-0000-4000-8000-000000000001` fica vinculado à FILIAL, onde possui
+  a maioria dos appointments; o appointment histórico existente na MATRIZ não é
+  reescrito nem excluído;
+- `30000000-0000-4000-8000-000000000002` fica vinculado à MATRIZ indicada por
+  seu histórico.
+
+Após o saneamento de uma base real, repita a pré-verificação antes de liberar a
+migration. Não use alteração de V001--V009 nem `flyway repair` para contornar uma
+falha de V010.
+
+### Verificação observada
+
+Em 2026-11-08, o upgrade V009→V010 foi executado em PostgreSQL descartável com
+as versões anteriores das oito seeds. A segunda unidade e os seis appointments
+foram preservados. A instalação limpa aplicou V001--V010 e nove seeds repetíveis;
+o Hibernate concluiu `ddl-auto=validate`. O roteiro transacional
+[`docs/sql/verify-v010-clinic-structure.sql`](../../../../../docs/sql/verify-v010-clinic-structure.sql)
+confirmou a rejeição de segunda MATRIZ, segundo `ADMIN` e vínculos de
+profissional/paciente com unidade de outra clínica, terminando com `ROLLBACK`.
+
 ## Arquivos críticos
 
 - `V001__create_table_clinic.sql`.
@@ -54,7 +98,8 @@ Startup -> conexão PostgreSQL -> histórico Flyway -> migrations pendentes em o
 - `V007__create_table_professional_service.sql`.
 - `V008__create_table_scheduling.sql`.
 - `V009` de rename compatível para `APPOINTMENT`.
-- `../seed/dev/R__001_seed_clinic.sql` até `../seed/dev/R__008_seed_scheduling.sql` (dados opcionais de desenvolvimento).
+- `V010__add_clinic_structure_and_unit_links.sql`.
+- `../seed/dev/R__001_seed_clinic.sql` até `../seed/dev/R__009_seed_patient_unit.sql` (dados opcionais de desenvolvimento).
 
 ## Regras confirmadas para evolução do módulo
 

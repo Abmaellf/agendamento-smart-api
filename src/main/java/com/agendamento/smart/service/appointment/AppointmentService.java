@@ -7,10 +7,12 @@ import com.agendamento.smart.dtos.appointment.AppointmentResponse.ReferenceRespo
 import com.agendamento.smart.model.appointment.Appointment;
 import com.agendamento.smart.model.appointment.AppointmentStatus;
 import com.agendamento.smart.model.clinic.Clinic;
+import com.agendamento.smart.model.clinic.StatusClinic;
 import com.agendamento.smart.model.patient.Patient;
 import com.agendamento.smart.model.professional.Professional;
 import com.agendamento.smart.model.serviceoffering.ServiceOffering;
 import com.agendamento.smart.model.unit.ClinicUnit;
+import com.agendamento.smart.model.unit.StatusUnit;
 import com.agendamento.smart.model.user.User;
 import com.agendamento.smart.model.user.UserRole;
 import com.agendamento.smart.repository.AppointmentRepository;
@@ -53,6 +55,7 @@ public class AppointmentService {
         UUID clinicId = user.getClinic().getId();
         Clinic clinic = clinicRepository.findByIdForUpdate(clinicId)
                 .orElseThrow(DomainException::tenantResourceNotFound);
+        requireClinicActiveForCreation(clinic);
 
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             Appointment existing = appointmentRepository
@@ -61,13 +64,16 @@ public class AppointmentService {
             if (existing != null) return toResponse(existing);
         }
 
-        Patient patient = patientRepository.findByIdAndClinicId(request.patientId(), clinicId)
-                .orElseThrow(DomainException::tenantResourceNotFound);
         ClinicUnit unit = unitRepository.findByIdAndClinicId(request.unitId(), clinicId)
                 .orElseThrow(DomainException::tenantResourceNotFound);
+        requireUnitActiveForCreation(unit);
+        Patient patient = patientRepository.findByIdAndClinicIdWithUnits(request.patientId(), clinicId)
+                .orElseThrow(DomainException::tenantResourceNotFound);
+        requirePatientInUnit(patient, unit.getId());
         ServiceOffering service = serviceRepository.findByIdAndClinicId(request.serviceId(), clinicId)
                 .orElseThrow(DomainException::tenantResourceNotFound);
-        Professional professional = resolveProfessional(request.professionalId(), clinicId, service.getId());
+        Professional professional = resolveProfessional(
+                request.professionalId(), clinicId, unit.getId(), service.getId());
 
         if (!request.startsAt().isAfter(Instant.now())) {
             throw new DomainException(
@@ -162,28 +168,110 @@ public class AppointmentService {
     public AppointmentResponse findById(UUID id, User user) {
         Appointment appointment = appointmentRepository.findByIdAndClinicId(id, user.getClinic().getId())
                 .orElseThrow(DomainException::tenantResourceNotFound);
+        requireClinicReadable(appointment.getClinic());
+        requireUnitReadable(appointment.getUnit());
         return toResponse(appointment);
     }
 
     @Transactional(readOnly = true)
     public List<AppointmentResponse> findAll(User user, UUID unitId, Instant from, Instant to) {
         UUID clinicId = user.getClinic().getId();
-        unitRepository.findByIdAndClinicId(unitId, clinicId)
+        Clinic clinic = clinicRepository.findById(clinicId)
                 .orElseThrow(DomainException::tenantResourceNotFound);
-        return appointmentRepository
-                .findAllByClinicIdAndUnitIdAndStartsAtGreaterThanEqualAndStartsAtLessThanOrderByStartsAtAsc(
-                        clinicId, unitId, from, to)
+        requireClinicReadable(clinic);
+        requireValidRange(from, to);
+
+        List<Appointment> appointments;
+        if (unitId == null) {
+            appointments = appointmentRepository.findReadableByClinicIdAndStartsAtBetween(
+                    clinicId, StatusUnit.INATIVO, from, to);
+        } else {
+            ClinicUnit unit = unitRepository.findByIdAndClinicId(unitId, clinicId)
+                    .orElseThrow(DomainException::tenantResourceNotFound);
+            requireUnitReadable(unit);
+            appointments = appointmentRepository
+                    .findAllByClinicIdAndUnitIdAndStartsAtGreaterThanEqualAndStartsAtLessThanOrderByStartsAtAsc(
+                            clinicId, unitId, from, to);
+        }
+
+        return appointments
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
-    private Professional resolveProfessional(UUID professionalId, UUID clinicId, UUID serviceId) {
+    private Professional resolveProfessional(
+            UUID professionalId,
+            UUID clinicId,
+            UUID unitId,
+            UUID serviceId) {
         if (professionalId == null) return null;
         Professional professional = professionalRepository.findByIdAndClinicId(professionalId, clinicId)
                 .orElseThrow(DomainException::tenantResourceNotFound);
+        if (!professional.getUnit().getId().equals(unitId)) {
+            throw new DomainException(
+                    "PROFESSIONAL_UNIT_MISMATCH",
+                    "O profissional não pertence à unidade do agendamento.",
+                    HttpStatus.UNPROCESSABLE_ENTITY);
+        }
         if (!professional.offers(serviceId)) throw DomainException.tenantResourceNotFound();
         return professional;
+    }
+
+    private void requireClinicActiveForCreation(Clinic clinic) {
+        if (clinic.getStatus() != StatusClinic.ATIVO) {
+            throw new DomainException(
+                    "CLINIC_APPOINTMENTS_DISABLED",
+                    "A clínica não permite novos agendamentos no status atual.",
+                    HttpStatus.FORBIDDEN);
+        }
+    }
+
+    private void requireUnitActiveForCreation(ClinicUnit unit) {
+        if (unit.getStatus() != StatusUnit.ATIVO) {
+            throw new DomainException(
+                    "UNIT_APPOINTMENTS_DISABLED",
+                    "A unidade não permite novos agendamentos no status atual.",
+                    HttpStatus.FORBIDDEN);
+        }
+    }
+
+    private void requirePatientInUnit(Patient patient, UUID unitId) {
+        boolean linked = patient.getUnits().stream()
+                .anyMatch(unit -> unit.getId().equals(unitId));
+        if (!linked) {
+            throw new DomainException(
+                    "PATIENT_UNIT_MISMATCH",
+                    "O paciente não pertence à unidade do agendamento.",
+                    HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+    }
+
+    private void requireClinicReadable(Clinic clinic) {
+        if (clinic.getStatus() == StatusClinic.INATIVO) {
+            throw new DomainException(
+                    "CLINIC_APPOINTMENTS_READ_DISABLED",
+                    "A clínica não permite consultar agendamentos no status atual.",
+                    HttpStatus.FORBIDDEN);
+        }
+    }
+
+    private void requireUnitReadable(ClinicUnit unit) {
+        if (unit.getStatus() == StatusUnit.INATIVO) {
+            throw new DomainException(
+                    "UNIT_APPOINTMENTS_READ_DISABLED",
+                    "A unidade não permite consultar agendamentos no status atual.",
+                    HttpStatus.FORBIDDEN);
+        }
+    }
+
+    private void requireValidRange(Instant from, Instant to) {
+        if (!from.isBefore(to)) {
+            throw new DomainException(
+                    "INVALID_APPOINTMENT_RANGE",
+                    "O início do intervalo deve ser anterior ao fim.",
+                    HttpStatus.BAD_REQUEST);
+        }
     }
 
     private boolean isActive(Appointment appointment) {

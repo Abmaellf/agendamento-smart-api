@@ -6,12 +6,13 @@ Definir contratos de cadastro e representação de usuário.
 
 ## Responsabilidades principais
 
-- Receber login, senha e papel.
+- Receber login, senha, papel e a decisão obrigatória `isProfessional`.
+- Receber nome e dias disponíveis quando a conta também representar um profissional.
 - Representar login, papel e clínica na resposta declarada pelo cadastro.
 
 ## Funcionalidades existentes
 
-- `RegisterDTO` é consumido no cadastro.
+- `RegisterDTO` é consumido no cadastro e valida condicionalmente os dados profissionais.
 - `UserResponseDTO` é o tipo de retorno declarado, mas nenhuma instância é retornada pelo fluxo atual.
 
 ## Dependências internas e externas
@@ -29,24 +30,22 @@ Definir contratos de cadastro e representação de usuário.
 
 ## Fluxos de entrada
 
-JSON -> `RegisterDTO` -> mapper/controller -> entidade. O endpoint termina com resposta vazia, sem usar `UserResponseDTO` no corpo.
+JSON -> `RegisterDTO` -> serviço transacional -> usuário e, opcionalmente, profissional. O endpoint termina com resposta vazia, sem usar `UserResponseDTO` no corpo.
 
 ## Arquivos críticos
 
 - `RegisterDTO.java`.
 - `UserResponseDTO.java`.
 
-## Regras confirmadas para evolução do módulo
+## Regras implementadas
 
-- O papel canônico operacional é `BASIC`; `USER` é legado e precisa de migração/compatibilidade explícita.
-- O comando de criação não aceita clínica arbitrária e só permite papel compatível com a autorização do criador.
-- Senha temporária existe apenas no comando apropriado e nunca aparece em respostas.
-- Respostas usam IDs/DTOs da clínica e unidade, sem incorporar entidades JPA.
-- Sessão/perfil informa validação de e-mail e troca obrigatória de senha sem revelar credenciais.
+- O cadastro posterior aceita somente `USER`; a conta `ADMIN` única nasce no cadastro da clínica.
+- A clínica vem da sessão e deve coincidir com o `clinicId` da rota.
+- `isProfessional` é obrigatório; quando verdadeiro, `professional` também é obrigatório.
+- O perfil profissional criado pertence exclusivamente à MATRIZ e à mesma clínica do usuário.
+- Login é único globalmente sem distinção de caixa; senha nunca aparece na resposta.
 
 ## Observações técnicas e débitos identificados
 
-- Não há constraints de login, senha ou papel.
-- O cliente escolhe diretamente `UserRole`, inclusive `ADMIN`.
-- `UserResponseDTO` contém a entidade `Clinic`, acoplando contrato HTTP e persistência.
-- `RegisterDTO` possui import de `UUID` não utilizado.
+- `UserResponseDTO` contém a entidade `Clinic`, mas o cadastro atual não o expõe.
+- A escolha de FILIAL para novos profissionais depende do fluxo futuro de novas unidades.

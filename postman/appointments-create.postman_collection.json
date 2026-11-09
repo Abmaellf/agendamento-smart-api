@@ -1,0 +1,230 @@
+{
+  "info": {
+    "_postman_id": "6fcf0e7f-5e58-4f62-939b-335251b4bbf9",
+    "name": "Agendamento Smart - Criar appointment",
+    "description": "Cria appointment por POST /api/appointments. As variáveis de IDs têm exemplos dos seeds de desenvolvimento. Em outro ambiente, substitua todos os IDs por recursos da clínica do usuário autenticado. O script gera startsAt futuro e Idempotency-Key quando estiverem vazios.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;",
+          "const DAY_IN_MS = 24 * 60 * 60 * 1000;",
+          "",
+          "function variableValue(name) {",
+          "    return pm.variables.get(name) || pm.collectionVariables.get(name);",
+          "}",
+          "",
+          "['patientId', 'unitId', 'serviceId'].forEach(function (name) {",
+          "    const value = variableValue(name);",
+          "    if (!uuidPattern.test(value || '')) {",
+          "        throw new Error('Preencha ' + name + ' com um UUID válido.');",
+          "    }",
+          "});",
+          "",
+          "const professionalId = variableValue('professionalId');",
+          "if (professionalId && !uuidPattern.test(professionalId)) {",
+          "    throw new Error('professionalId deve ser vazio ou um UUID válido.');",
+          "}",
+          "pm.variables.set('professionalIdJson', professionalId ? JSON.stringify(professionalId) : 'null');",
+          "",
+          "const durationMinutes = Number(variableValue('durationMinutes'));",
+          "if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 480) {",
+          "    throw new Error('durationMinutes deve ser um inteiro entre 1 e 480.');",
+          "}",
+          "",
+          "const price = Number(variableValue('price'));",
+          "if (!Number.isFinite(price) || price < 0 || !/^\\d{1,8}(\\.\\d{1,2})?$/.test(String(variableValue('price')))) {",
+          "    throw new Error('price deve ser um número não negativo com até duas casas decimais, por exemplo 150.00.');",
+          "}",
+          "",
+          "let startsAt = variableValue('startsAt');",
+          "if (!startsAt) {",
+          "    const future = new Date(Date.now() + (7 * DAY_IN_MS));",
+          "    future.setUTCHours(15, 0, 0, 0);",
+          "    startsAt = future.toISOString();",
+          "    pm.collectionVariables.set('startsAt', startsAt);",
+          "}",
+          "pm.variables.set('startsAt', startsAt);",
+          "",
+          "const startsAtInstant = Date.parse(startsAt);",
+          "if (!Number.isFinite(startsAtInstant)) {",
+          "    throw new Error('startsAt deve ser um instante ISO-8601, por exemplo 2026-11-18T15:00:00Z.');",
+          "}",
+          "if (startsAtInstant <= Date.now()) {",
+          "    throw new Error('startsAt deve estar no futuro.');",
+          "}",
+          "",
+          "let idempotencyKey = variableValue('idempotencyKey');",
+          "if (!idempotencyKey) {",
+          "    idempotencyKey = 'appointment-' + pm.variables.replaceIn('{{$guid}}');",
+          "    pm.collectionVariables.set('idempotencyKey', idempotencyKey);",
+          "}",
+          "if (idempotencyKey.length > 120) {",
+          "    throw new Error('Idempotency-Key deve ter no máximo 120 caracteres.');",
+          "}",
+          "pm.variables.set('idempotencyKey', idempotencyKey);",
+          "",
+          "const token = variableValue('token');",
+          "if (token) {",
+          "    pm.request.headers.upsert({",
+          "        key: 'Authorization',",
+          "        value: 'Bearer ' + token",
+          "    });",
+          "} else {",
+          "    pm.request.headers.remove('Authorization');",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Retorna HTTP 201 Created', function () {",
+          "    pm.response.to.have.status(201);",
+          "});",
+          "",
+          "if (pm.response.code === 201) {",
+          "    const body = pm.response.json();",
+          "    const patientId = pm.variables.get('patientId') || pm.collectionVariables.get('patientId');",
+          "    const unitId = pm.variables.get('unitId') || pm.collectionVariables.get('unitId');",
+          "    const serviceId = pm.variables.get('serviceId') || pm.collectionVariables.get('serviceId');",
+          "    const professionalId = pm.variables.get('professionalId') || pm.collectionVariables.get('professionalId');",
+          "    const startsAt = pm.variables.get('startsAt');",
+          "    const durationMinutes = Number(pm.variables.get('durationMinutes') || pm.collectionVariables.get('durationMinutes'));",
+          "    const price = Number(pm.variables.get('price') || pm.collectionVariables.get('price'));",
+          "    const idempotencyKey = pm.variables.get('idempotencyKey');",
+          "",
+          "    pm.test('Retorna o appointment criado para os IDs informados', function () {",
+          "        pm.expect(body.id).to.match(/^[0-9a-f-]{36}$/i);",
+          "        pm.expect(body.unitId).to.eql(unitId);",
+          "        pm.expect(body.patient.id).to.eql(patientId);",
+          "        pm.expect(body.patientId).to.eql(patientId);",
+          "        pm.expect(body.service.id).to.eql(serviceId);",
+          "        pm.expect(body.durationMinutes).to.eql(durationMinutes);",
+          "        pm.expect(Number(body.price)).to.eql(price);",
+          "        pm.expect(body.status).to.eql('AGENDADO');",
+          "        pm.expect(Date.parse(body.startsAt)).to.eql(Date.parse(startsAt));",
+          "    });",
+          "",
+          "    pm.test('Profissional segue o valor enviado', function () {",
+          "        if (professionalId) {",
+          "            pm.expect(body.professional.id).to.eql(professionalId);",
+          "        } else {",
+          "            pm.expect(body.professional == null).to.be.true;",
+          "        }",
+          "    });",
+          "",
+          "    const previousId = pm.collectionVariables.get('lastAppointmentId');",
+          "    const previousKey = pm.collectionVariables.get('lastIdempotencyKey');",
+          "    if (previousKey === idempotencyKey && previousId) {",
+          "        pm.test('Reenvio com a mesma Idempotency-Key preserva o mesmo appointment', function () {",
+          "            pm.expect(body.id).to.eql(previousId);",
+          "        });",
+          "    }",
+          "",
+          "    pm.collectionVariables.set('lastAppointmentId', body.id);",
+          "    pm.collectionVariables.set('lastIdempotencyKey', idempotencyKey);",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "patientId",
+      "value": "20000000-0000-4000-8000-000000000001",
+      "type": "string"
+    },
+    {
+      "key": "unitId",
+      "value": "60000000-0000-4000-8000-000000000001",
+      "type": "string"
+    },
+    {
+      "key": "serviceId",
+      "value": "40000000-0000-4000-8000-000000000003",
+      "type": "string"
+    },
+    {
+      "key": "professionalId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "durationMinutes",
+      "value": "60",
+      "type": "string"
+    },
+    {
+      "key": "price",
+      "value": "150.00",
+      "type": "string"
+    },
+    {
+      "key": "startsAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "idempotencyKey",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Criar appointment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{idempotencyKey}}",
+            "description": "Chave única por tentativa lógica de criação. Reutilize-a somente para repetir a mesma operação."
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"unitId\": \"{{unitId}}\",\n  \"serviceId\": \"{{serviceId}}\",\n  \"professionalId\": {{professionalIdJson}},\n  \"startsAt\": \"{{startsAt}}\",\n  \"durationMinutes\": {{durationMinutes}},\n  \"price\": {{price}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/appointments",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "appointments"
+          ]
+        },
+        "description": "Cria um appointment na clínica do usuário autenticado. professionalId é opcional."
+      },
+      "response": []
+    }
+  ]
+}

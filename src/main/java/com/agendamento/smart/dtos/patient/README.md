@@ -6,8 +6,8 @@ Definir os contratos HTTP mínimos para cadastro e retorno de pacientes.
 
 ## Responsabilidades principais
 
-- Receber nome e UUID de clínica.
-- Retornar UUID, nome e UUID de clínica sem expor a entidade JPA.
+- Receber nome e um ou mais UUIDs de unidades.
+- Retornar UUID, nome, UUID da clínica derivada da sessão e UUIDs das unidades.
 
 ## Funcionalidades existentes
 
@@ -17,7 +17,7 @@ Definir os contratos HTTP mínimos para cadastro e retorno de pacientes.
 ## Dependências internas e externas
 
 - Internas: nenhuma dependência de classe do projeto.
-- Externas: `java.util.UUID`.
+- Externas: `java.util.List` e `java.util.UUID`.
 
 ## Módulos relacionados
 
@@ -30,23 +30,21 @@ Definir os contratos HTTP mínimos para cadastro e retorno de pacientes.
 
 ## Fluxos de entrada
 
-JSON -> `PatientRequestDTO` -> service/mapper; entidade -> `PatientResponseDTO` -> JSON.
+JSON -> `PatientRequestDTO` -> serviço com clínica autenticada -> entidade e vínculos de unidade; entidade -> `PatientResponseDTO` -> JSON.
 
 ## Arquivos críticos
 
 - `PatientRequestDTO.java`.
 - `PatientResponseDTO.java`.
 
-## Regras confirmadas para evolução do módulo
+## Regras implementadas
 
-- Criação exige nome, CPF e telefone; CPF é único no tenant.
-- `clinicId` deve sair do comando comum de criação, pois o tenant é derivado da sessão.
-- Respostas podem identificar o tenant como contexto, mas não expõem dados pessoais além do necessário para a tela/operação.
-- Paciente não possui `unitId`, pois é compartilhado entre unidades do tenant.
-- Contratos de edição/inativação serão definidos após a rodada correspondente da entrevista.
+- A clínica é derivada da sessão; `clinicId` é apenas compatibilidade legada e, se informado, deve coincidir.
+- `unitIds` é obrigatório e contém uma ou várias unidades da mesma clínica.
+- Um paciente pertence a uma única clínica e pode pertencer a várias unidades dela.
+- O nome é normalizado em maiúsculas e permanece único globalmente por compatibilidade.
 
 ## Observações técnicas e débitos identificados
 
-- Não há constraints para nome ou `clinicId`, apesar de o controller usar `@Valid`.
-- A clínica vem do cliente e não é derivada do usuário autenticado.
+- `clinicId` deve ser removido do request quando os clientes legados forem migrados.
 - O código de paciente e a data de criação existem na entidade, mas não são expostos pelo DTO.

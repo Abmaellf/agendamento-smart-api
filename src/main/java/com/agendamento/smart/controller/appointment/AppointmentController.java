@@ -40,7 +40,7 @@ public class AppointmentController {
     @GetMapping
     public CatalogResponse<AppointmentResponse> findAll(
             @AuthenticationPrincipal User user,
-            @RequestParam UUID unitId,
+            @RequestParam(required = false) UUID unitId,
             @RequestParam Instant from,
             @RequestParam Instant to) {
         return new CatalogResponse<>(service.findAll(user, unitId, from, to));

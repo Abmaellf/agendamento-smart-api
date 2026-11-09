@@ -5,6 +5,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -38,4 +40,12 @@ public class ClinicUnit {
 
     @Column(name = "time_zone", nullable = false)
     private String timeZone;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private StatusUnit status = StatusUnit.ATIVO;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TypeUnit type;
 }

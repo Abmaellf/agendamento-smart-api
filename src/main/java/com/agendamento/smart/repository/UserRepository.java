@@ -12,4 +12,10 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("select u from User u where lower(u.login) = lower(:login)")
     UserDetails findByLogin(@Param("login") String login);
+
+    boolean existsByLoginIgnoreCase(String login);
+
+    long countByClinicId(UUID clinicId);
+
+    long countByClinicIdAndRole(UUID clinicId, com.agendamento.smart.model.user.UserRole role);
 }
