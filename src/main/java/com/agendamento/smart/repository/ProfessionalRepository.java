@@ -14,4 +14,10 @@ public interface ProfessionalRepository extends JpaRepository<Professional, UUID
 
     @EntityGraph(attributePaths = "services")
     Optional<Professional> findByIdAndClinicId(UUID id, UUID clinicId);
+
+    List<Professional> findAllByClinicId(UUID clinicId);
+
+    long countByClinicId(UUID clinicId);
+
+    Optional<Professional> findByUserId(UUID userId);
 }

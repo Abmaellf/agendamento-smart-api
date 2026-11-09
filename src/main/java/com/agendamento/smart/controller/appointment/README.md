@@ -13,7 +13,7 @@ Expor criação, listagem por intervalo e consulta unitária de agendamentos.
 ## Funcionalidades existentes
 
 - `POST /api/appointments`: cria agendamento.
-- `GET /api/appointments`: lista agendamentos por unidade e intervalo.
+- `GET /api/appointments`: lista por clínica e intervalo, com `unitId` opcional.
 - `GET /api/appointments/{id}`: consulta por UUID.
 
 ## Dependências internas e externas
@@ -41,9 +41,17 @@ Expor criação, listagem por intervalo e consulta unitária de agendamentos.
 - `AppointmentController.java`.
 - `../../service/appointment/AppointmentService.java`.
 
+## Regras implementadas
+
+- A clínica vem do principal autenticado; IDs de outro tenant não autorizam acesso.
+- `from` e `to` são obrigatórios, formam `[from,to)` e exigem `from < to`.
+- Sem `unitId`, a listagem abrange unidades legíveis da clínica; com ele, valida e filtra uma unidade.
+- Clínica/unidade fora de `ATIVO` bloqueia criação; somente `INATIVO` bloqueia leitura histórica.
+- Paciente deve pertencer à unidade e profissional opcional, quando informado, também.
+
 ## Regras confirmadas para evolução do módulo
 
-- A API de agenda deve oferecer consulta paginada por intervalo, sempre escopada pelo `tenantId` da sessão e pelo `unitId` autorizado.
+- A API de agenda poderá receber paginação em change própria se o volume exigir.
 - Criação bloqueia, sem exceção, sobreposição do paciente, sobreposição do profissional e capacidade excedida do serviço.
 - `ADMIN` e `BASIC` criam, confirmam, iniciam, concluem, registram falta e remarcam; somente `ADMIN` cancela.
 - Remarcação exige motivo, marca o original como `REMARCADO` e cria um novo agendamento vinculado. Cancelamento exige motivo e pode atingir uma ocorrência ou “esta e as próximas”.
@@ -57,3 +65,4 @@ Expor criação, listagem por intervalo e consulta unitária de agendamentos.
 - Não existem atualização, cancelamento ou transição de status.
 - A criação responde HTTP 201.
 - Ausências e conflitos usam o contrato central de erros de domínio.
+- A matriz completa de status está em `docs/API_APPOINTMENTS.md` na raiz do projeto.

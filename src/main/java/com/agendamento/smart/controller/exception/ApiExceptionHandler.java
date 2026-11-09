@@ -55,4 +55,13 @@ public class ApiExceptionHandler {
                 Map.of()
         ));
     }
+
+    @ExceptionHandler(PatientAlreadyExistsException.class)
+    public ResponseEntity<ApiErrorResponse> patientAlreadyExists(PatientAlreadyExistsException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiErrorResponse(
+                "PATIENT_ALREADY_EXISTS",
+                exception.getMessage(),
+                Map.of()
+        ));
+    }
 }

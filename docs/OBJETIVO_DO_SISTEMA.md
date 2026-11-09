@@ -5,7 +5,7 @@
 | Campo | Valor |
 |---|---|
 | Sistema | `agendamento-smart-api` |
-| Data de referência | 12 de agosto de 2026 |
+| Data de referência | 8 de novembro de 2026 |
 | Evidências | Controllers, services, entidades, repositories, migrations, segurança, `README.md` e configuração operacional |
 
 Este documento descreve a capacidade implementada. O estado-alvo confirmado está em [Requisitos do MVP](REQUISITOS_DO_MVP.md), e as decisões ainda abertas estão em [Entrevista de descoberta](ENTREVISTA_DE_DESCOBERTA.md). Uma regra de produto confirmada, mas ausente do código, continua sendo descrita aqui como não implementada.
@@ -20,29 +20,33 @@ O README existente descreve uso em áreas médicas e clínicas de Psicologia e F
 
 - Autenticação de usuários por login e senha BCrypt.
 - Emissão e validação de token JWT para requisições stateless.
-- Associação obrigatória de usuários e pacientes a uma clínica.
-- Cadastro de usuário em clínica existente.
-- Cadastro de paciente e listagem paginada.
-- Criação de agendamento associado a paciente.
+- Onboarding atômico de clínica, MATRIZ, equipe operacional e contas iniciais.
+- Associação obrigatória de usuários a uma clínica, profissionais a uma unidade e pacientes a uma ou várias unidades da mesma clínica.
+- Cadastro posterior de usuário, com escolha obrigatória sobre perfil profissional.
+- Cadastro de paciente por clínica autenticada e listagem paginada legada.
+- Criação de agendamento com status, vínculos, conflitos, capacidade e tenant validados.
 - Armazenamento de uma lista de patologias em `jsonb` por agendamento.
-- Consulta de agendamento por UUID.
+- Consulta de agendamento por UUID ou intervalo, por clínica e unidade opcional.
 - Versionamento do schema com Flyway.
 - Consulta da versão da aplicação para diagnóstico de build.
 
-O código não resolve conflitos de horário, disponibilidade de profissionais, duração, recursos/salas, notificações, pagamento ou histórico clínico.
+O código ainda não resolve faixas intradiárias, férias, recursos/salas,
+notificações, pagamento, histórico clínico ou transições completas do ciclo do
+appointment.
 
 ## Atores envolvidos
 
 | Ator | Capacidades efetivamente observadas |
 |---|---|
-| Cliente não autenticado | Efetuar login e listar pacientes; demais acessos dependem das regras de CORS e segurança |
-| Usuário `USER` autenticado | Consultar próprio usuário, listar todos os usuários, criar/consultar agendamentos e cadastrar outro usuário, inclusive enviando o papel desejado |
-| Usuário `ADMIN` autenticado | Capacidades de `USER` e criação de pacientes |
-| Clínica | Entidade organizacional à qual usuários e pacientes pertencem; não possui API própria |
-| Paciente | Entidade cadastrada em uma clínica e referenciada por agendamentos; não é um principal autenticável |
+| Cliente não autenticado | Efetuar login, cadastrar inicialmente uma clínica e acessar a listagem pública legada de pacientes |
+| Usuário `USER` autenticado | Consultar perfil, criar/consultar appointments e cadastrar somente outro `USER` em sua clínica |
+| Usuário `ADMIN` autenticado | Capacidades de `USER`, criação de pacientes e sobrescrita permitida de duração/preço |
+| Clínica | Tenant com status explícito, onboarding público e uma MATRIZ inicial |
+| Paciente | Entidade de uma clínica associada a uma ou várias unidades dela; não é principal autenticável |
 | Operação/implantação | Configura banco, segredo JWT, migrations, porta e versão; pode executar via Maven ou Docker Compose |
 
-Como requisito confirmado, a clínica representa o tenant e deverá ser a fronteira de segurança. No código atual ela é apenas uma associação organizacional: o isolamento entre clínicas não está implementado nas consultas e autorizações.
+A clínica representa o tenant e já delimita onboarding, cadastros posteriores e
+agenda. A listagem pública legada de pacientes permanece uma exceção explícita.
 
 ## Principais fluxos de negócio
 
@@ -68,30 +72,27 @@ Entrada: JWT válido.
 
 Resultado: a entidade de usuário é devolvida ao cliente.
 
-### 3. Cadastro de usuário
+### 3. Cadastro inicial e posterior de usuário
 
-Entrada: UUID de clínica no path; login, senha e papel no corpo.
+`POST /auth/register/clinic` cria atomicamente clínica/MATRIZ ativas, contas e
+profissionais ATENDENTE/ADMINISTRATIVO. O administrativo é o único `ADMIN`.
 
-1. O sistema verifica se o login já existe.
-2. A clínica é localizada pelo UUID informado.
-3. A senha é codificada com BCrypt.
-4. O mapper cria a entidade e o repository persiste.
-
-Resultado atual: HTTP 200 sem corpo. Embora o controller declare `UserResponseDTO`, ele não o retorna.
-
-A rota efetiva exige apenas que o chamador esteja autenticado; não há verificação de papel nem de pertencimento à clínica.
+No cadastro posterior, o `clinicId` do path deve coincidir com a clínica do
+principal, o papel aceito é somente `USER` e `isProfessional` é obrigatório.
+Quando verdadeiro, a conta e o profissional exclusivo da MATRIZ são persistidos
+juntos. A resposta é HTTP 200 sem corpo e a senha fica codificada com BCrypt.
 
 ### 4. Cadastro de paciente
 
-Entrada: nome e UUID da clínica.
+Entrada: nome e lista não vazia de unidades.
 
 1. A rota exige papel `ADMIN`.
-2. A clínica é localizada.
-3. O nome é transformado em maiúsculas.
-4. O sistema procura outro paciente com o mesmo nome em toda a base.
-5. Um código sequencial calculado por `MAX + 1` é atribuído e o paciente é persistido.
+2. A clínica é derivada do principal autenticado.
+3. Todas as unidades são validadas na mesma clínica.
+4. O nome é transformado para maiúsculas e mantém a unicidade global legada.
+5. Paciente e associações de unidade são persistidos na mesma transação.
 
-Resultado: UUID, nome e UUID da clínica.
+Resultado: UUID, nome, UUID da clínica e `unitIds`.
 
 ### 5. Listagem de pacientes
 
@@ -105,46 +106,46 @@ Resultado: página de pacientes. A rota é pública na configuração atual.
 
 ### 6. Criação de agendamento
 
-Entrada: UUID do paciente, patologias, data/hora, hora adicional, status opcional no tipo Java e variante opcional.
+Entrada: paciente, unidade, serviço, profissional opcional, instante inicial,
+duração e preço.
 
-1. O paciente é localizado por UUID.
-2. O mapper cria a entidade de agendamento.
-3. O service associa o paciente.
-4. Hibernate mapeia as patologias diretamente para `jsonb` e o agendamento é persistido.
-
-Resultado: DTO com IDs, dados de agenda, status e timestamps.
-
-Não há validação de conflito, clínica, data futura ou transição de status. Se o status for omitido, o mapper atual pode anular o default `AGENDADO` e causar erro de persistência.
+1. A clínica vem do usuário autenticado e é bloqueada durante a escrita.
+2. Clínica e unidade precisam estar `ATIVO`.
+3. Paciente precisa pertencer à unidade; profissional, quando informado, também.
+4. O service valida futuro, disponibilidade semanal, sobreposições, capacidade e permissão para sobrescrever duração/preço.
+5. O appointment nasce `AGENDADO`, com autoria, fuso e snapshots persistidos.
 
 ### 7. Consulta de agendamento
 
-Entrada: UUID do agendamento.
-
-1. O repository busca o registro por ID.
-2. O mapper devolve o DTO de resposta com o ID do paciente.
-
-Resultado: um agendamento. Não há listagem nem filtro por clínica, paciente, período ou status.
+Por UUID, o repository combina ID e clínica autenticada. Na listagem, `from` e
+`to` são obrigatórios, `unitId` é opcional e o resultado usa `[from,to)` em
+ordem crescente. Clínica ou unidade `INATIVO` impede leitura explícita;
+`BLOQUEADA` permite histórico e a listagem ampla exclui unidades inativas.
 
 ## Funcionalidades centrais e estágio
 
 | Área | Implementado | Não implementado no código analisado |
 |---|---|---|
 | Autenticação | Login, JWT, cookie, Bearer, papéis | Logout, refresh/revogação, recuperação de senha, bloqueio de conta |
-| Usuários | Cadastro, listagem, usuário atual | Atualização, exclusão, convite, política segura de atribuição de papel |
-| Clínicas | Entidade, repository, service sem consumidor, seed inicial | Endpoints de cadastro, consulta, atualização ou exclusão |
-| Pacientes | Cadastro e listagem paginada | Busca por ID, atualização, exclusão e isolamento por clínica |
-| Agendamentos | Criação e consulta por ID | Listagem, alteração, cancelamento, finalização, conflito e disponibilidade |
+| Usuários | Cadastro posterior restrito a `USER`, perfil profissional opcional, listagem e usuário atual | Atualização, exclusão, convite |
+| Clínicas | Onboarding com MATRIZ/equipe, status e invariantes persistentes | Consulta, atualização, FILIAL e transição de status |
+| Pacientes | Cadastro isolado com vínculos de unidades e listagem paginada legada | Busca por ID, atualização, exclusão e correção da listagem pública |
+| Agendamentos | Criação, consulta por ID, listagem por clínica/unidade, conflitos e capacidade | Alteração, cancelamento, finalização e recorrência |
 | Operação | Flyway, build info, Dockerfile/Compose | Health check HTTP, métricas, tracing e documentação OpenAPI |
 
 ## Visão de produto
 
-O produto implementado é uma API inicial de gestão de agendamentos, ainda concentrada no cadastro mínimo de usuários, pacientes e compromissos. O modelo de clínica permite organizar os dados por estabelecimento, mas essa organização ainda não constitui uma fronteira de segurança.
-
-A evolução confirmada é um SaaS multi-tenant para fisioterapia, Pilates e atividades relacionadas, com usuários operando somente dados da própria clínica. Uma `Unit` padrão será criada desde o onboarding; pacientes e profissionais serão compartilhados pelo tenant e agendamentos serão vinculados à unidade. O código atual ainda não materializa essa arquitetura de segurança e domínio.
+O produto implementado é uma API multi-tenant inicial de gestão de
+agendamentos. A clínica delimita cadastros e agenda; o onboarding cria a MATRIZ
+e a equipe operacional, profissionais pertencem a uma unidade e pacientes
+podem pertencer a várias unidades da mesma clínica.
 
 O enum Java e o check do schema PostgreSQL aceitam `AGENDADO`, `ATENDENDO`, `CANCELADO` e `FINALIZADO`; porém não existem endpoints nem regras de transição. Portanto, o ciclo completo não deve ser tratado como funcionalidade existente.
 
-O ciclo-alvo confirmado usa `AGENDADO`, `CONFIRMADO`, `EM_ATENDIMENTO`, `CONCLUIDO`, `CANCELADO`, `FALTA` e `REMARCADO`, com ações manuais no primeiro MVP. Recorrência, remarcação vinculada, cancelamento auditável, capacidade do serviço e bloqueios de sobreposição também são requisitos confirmados ainda não implementados.
+O ciclo-alvo confirmado usa `AGENDADO`, `CONFIRMADO`, `EM_ATENDIMENTO`,
+`CONCLUIDO`, `CANCELADO`, `FALTA` e `REMARCADO`, com ações manuais no primeiro
+MVP. Capacidade e bloqueios de sobreposição já existem na criação; recorrência,
+remarcação vinculada e cancelamento auditável ainda não estão implementados.
 
 ## Contexto operacional
 
@@ -166,18 +167,16 @@ O volume `postgresql_data` é separado do volume usado pelo MySQL anterior. Nem 
 
 `flyway repair` não é um mecanismo de migração de banco ou dados e não deve ser executado cegamente para reconciliar o histórico MySQL com o schema PostgreSQL.
 
-Não há profile `dev`: o Compose local usa `test`. Também não há testes automatizados ou ambiente de teste em memória; a validação integrada depende de PostgreSQL.
+Não há profile `dev`: o Compose local usa `test`. Os testes automatizados usam
+PostgreSQL real descartável via Testcontainers; não há banco em memória.
 
 ## Limites atuais que afetam o objetivo
 
-- A API não assegura confidencialidade entre clínicas.
 - Contratos que retornam `User` podem expor o hash de senha.
-- Um usuário autenticado pode atribuir papel `ADMIN` no cadastro.
 - A listagem de pacientes é pública.
-- Não existe API de clínica, embora clínica seja obrigatória para usuários e pacientes.
-- Não existe agenda consultável por período; somente criação e busca por UUID.
+- Não há API para consultar/alterar clínica, criar FILIAL ou mudar status.
 - Não existem comandos nem regras de transição entre os estados já aceitos por Java e pelo schema.
-- Erros de negócio não possuem representação HTTP oficial.
+- A unicidade global legada do nome de paciente ainda atravessa clínicas.
 
 Esses limites devem ser considerados antes de declarar o sistema pronto para operação com dados reais ou múltiplas clínicas.
 

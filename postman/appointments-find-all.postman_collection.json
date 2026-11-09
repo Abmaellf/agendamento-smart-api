@@ -1,0 +1,205 @@
+{
+  "info": {
+    "_postman_id": "d57e8c7a-d479-4fc8-9408-9c67b8643781",
+    "name": "Agendamento Smart - Busca de appointments",
+    "description": "Consultas de GET /api/appointments com filtro opcional por unidade. O script cria um intervalo padrão em UTC, valida from < to e usa Bearer token somente quando a variável token estiver preenchida. Se o login já tiver criado o cookie jwt no Postman, token pode permanecer vazio.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const DAY_IN_MS = 24 * 60 * 60 * 1000;",
+          "const now = new Date();",
+          "",
+          "let fromValue = pm.variables.get('from');",
+          "if (!fromValue) {",
+          "    fromValue = new Date(now.getTime() - DAY_IN_MS).toISOString();",
+          "    pm.collectionVariables.set('from', fromValue);",
+          "    pm.variables.set('from', fromValue);",
+          "}",
+          "",
+          "let toValue = pm.variables.get('to');",
+          "if (!toValue) {",
+          "    toValue = new Date(now.getTime() + (30 * DAY_IN_MS)).toISOString();",
+          "    pm.collectionVariables.set('to', toValue);",
+          "    pm.variables.set('to', toValue);",
+          "}",
+          "",
+          "const fromInstant = Date.parse(fromValue);",
+          "const toInstant = Date.parse(toValue);",
+          "",
+          "if (!Number.isFinite(fromInstant)) {",
+          "    throw new Error('A variável from deve ser um instante ISO-8601, por exemplo 2026-11-08T00:00:00Z.');",
+          "}",
+          "",
+          "if (!Number.isFinite(toInstant)) {",
+          "    throw new Error('A variável to deve ser um instante ISO-8601, por exemplo 2026-12-08T00:00:00Z.');",
+          "}",
+          "",
+          "if (fromInstant >= toInstant) {",
+          "    throw new Error('O instante from deve ser anterior ao instante to.');",
+          "}",
+          "",
+          "const unitIdQuery = pm.request.url.query.get('unitId');",
+          "if (unitIdQuery != null) {",
+          "    const unitId = pm.variables.replaceIn(unitIdQuery);",
+          "    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;",
+          "    if (!uuidPattern.test(unitId)) {",
+          "        throw new Error('Preencha unitId com um UUID válido para executar a busca por unidade.');",
+          "    }",
+          "}",
+          "",
+          "const token = pm.variables.get('token');",
+          "if (token) {",
+          "    pm.request.headers.upsert({",
+          "        key: 'Authorization',",
+          "        value: 'Bearer ' + token",
+          "    });",
+          "} else {",
+          "    pm.request.headers.remove('Authorization');",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Retorna HTTP 200', function () {",
+          "    pm.response.to.have.status(200);",
+          "});",
+          "",
+          "let body;",
+          "pm.test('Retorna um CatalogResponse com content', function () {",
+          "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+          "    body = pm.response.json();",
+          "    pm.expect(body).to.be.an('object');",
+          "    pm.expect(body.content).to.be.an('array');",
+          "});",
+          "",
+          "if (body && Array.isArray(body.content)) {",
+          "    pm.test('Appointments estão ordenados por startsAt', function () {",
+          "        const startsAtValues = body.content.map(function (appointment) {",
+          "            return Date.parse(appointment.startsAt);",
+          "        });",
+          "        pm.expect(startsAtValues.every(Number.isFinite)).to.be.true;",
+          "        for (let index = 1; index < startsAtValues.length; index += 1) {",
+          "            pm.expect(startsAtValues[index]).to.be.at.least(startsAtValues[index - 1]);",
+          "        }",
+          "    });",
+          "",
+          "    const unitIdQuery = pm.request.url.query.get('unitId');",
+          "    if (unitIdQuery != null) {",
+          "        const requestedUnitId = pm.variables.replaceIn(unitIdQuery);",
+          "        pm.test('Todos os appointments pertencem à unidade solicitada', function () {",
+          "            pm.expect(body.content.every(function (appointment) {",
+          "                return appointment.unitId === requestedUnitId;",
+          "            })).to.be.true;",
+          "        });",
+          "    }",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "unitId",
+      "value": "60000000-0000-4000-8000-000000000001",
+      "type": "string"
+    },
+    {
+      "key": "from",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "to",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Buscar appointments da clínica",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/appointments?from={{from}}&to={{to}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "appointments"
+          ],
+          "query": [
+            {
+              "key": "from",
+              "value": "{{from}}",
+              "description": "Instante inicial inclusivo em ISO-8601."
+            },
+            {
+              "key": "to",
+              "value": "{{to}}",
+              "description": "Instante final exclusivo em ISO-8601."
+            }
+          ]
+        },
+        "description": "Retorna appointments de todas as unidades visíveis da clínica do usuário autenticado no intervalo [from, to)."
+      },
+      "response": []
+    },
+    {
+      "name": "Buscar appointments por unidade",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/appointments?unitId={{unitId}}&from={{from}}&to={{to}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "appointments"
+          ],
+          "query": [
+            {
+              "key": "unitId",
+              "value": "{{unitId}}",
+              "description": "UUID da unidade pertencente à clínica autenticada."
+            },
+            {
+              "key": "from",
+              "value": "{{from}}",
+              "description": "Instante inicial inclusivo em ISO-8601."
+            },
+            {
+              "key": "to",
+              "value": "{{to}}",
+              "description": "Instante final exclusivo em ISO-8601."
+            }
+          ]
+        },
+        "description": "Retorna somente appointments da unidade informada no intervalo [from, to)."
+      },
+      "response": []
+    }
+  ]
+}

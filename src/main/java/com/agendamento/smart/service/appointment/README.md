@@ -9,7 +9,7 @@ Orquestrar criação e consulta de agendamentos.
 - Resolver paciente, unidade, serviço e profissional opcional dentro do tenant autenticado.
 - Validar data futura, disponibilidade, sobreposições, capacidade, duração e preço.
 - Construir e persistir o agendamento com autoria e idempotência.
-- Listar por unidade/intervalo ou consultar por UUID e mapear a resposta.
+- Listar por clínica/intervalo com filtro opcional de unidade ou consultar por UUID e mapear a resposta.
 
 ## Funcionalidades existentes
 
@@ -36,6 +36,15 @@ Orquestrar criação e consulta de agendamentos.
 
 - Criação: request -> resolução dos recursos do tenant -> associação -> save -> resposta.
 - Consulta: filtros ou UUID -> repository -> conversão manual de resposta.
+
+## Regras implementadas
+
+- Criação exige clínica e unidade `ATIVO`, paciente vinculado à unidade e profissional opcional da mesma unidade.
+- Login não é responsabilidade deste service e permanece permitido em todos os status.
+- Leitura rejeita clínica ou unidade `INATIVO`; `BLOQUEADA` permite histórico.
+- Listagem sem unidade exclui no banco unidades `INATIVO`; filtro explícito para uma delas responde 403.
+- A clínica é validada antes da unidade e sempre vem do usuário autenticado.
+- `unitId` ausente seleciona a clínica; presente preserva a consulta compatível por unidade.
 
 ## Arquivos críticos
 

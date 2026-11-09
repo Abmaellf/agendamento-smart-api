@@ -2,14 +2,19 @@ package com.agendamento.smart.model.professional;
 
 import com.agendamento.smart.model.clinic.Clinic;
 import com.agendamento.smart.model.serviceoffering.ServiceOffering;
+import com.agendamento.smart.model.unit.ClinicUnit;
+import com.agendamento.smart.model.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -41,6 +46,17 @@ public class Professional {
 
     @Column(name = "available_week_days", nullable = false)
     private String availableWeekDaysValue;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "unit_id", nullable = false)
+    private ClinicUnit unit;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", unique = true)
+    private User user;
+
+    @Enumerated(EnumType.STRING)
+    private TypeProfessional type;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

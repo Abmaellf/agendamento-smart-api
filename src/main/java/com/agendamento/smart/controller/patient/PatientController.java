@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 //@CrossOrigin(origins = "https://agendamentos-smart.vercel.app/**")
@@ -28,9 +29,11 @@ public class PatientController {
 
     @PostMapping("/save")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<PatientResponseDTO> savePatient(@RequestBody @Valid PatientRequestDTO dto){
-        PatientResponseDTO response = patientService.save(dto);
-        System.out.println(response);
+    public ResponseEntity<PatientResponseDTO> savePatient(
+            @RequestBody @Valid PatientRequestDTO dto,
+            Authentication authentication
+    ) {
+        PatientResponseDTO response = patientService.save(dto, authentication);
         return ResponseEntity.ok(response);
     }
 }
