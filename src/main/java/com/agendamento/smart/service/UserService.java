@@ -48,7 +48,7 @@ public class UserService {
         User user = currentUserService(authentication);
 
         // 2. Busca a unidade (Lógica que estava no controller)
-        var unit = unitRepository.findFirstByClinicIdOrderByNameAsc(user.getClinic().getId())
+        var unit = user.getClinicUnit() != null ? user.getClinicUnit() : unitRepository.findFirstByClinicIdOrderByNameAsc(user.getClinic().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Unidade ativa não encontrada"));
 
         // 3. Define a Role
@@ -63,7 +63,9 @@ public class UserService {
                 roleStr,
                 user.getClinic().getId(),
                 unit.getTenantId(),
-                unit.getId()
+                unit.getId(),
+                user.getClinic().getName(),
+                unit.getName()
         );
     }
 }

@@ -16,6 +16,8 @@ import java.util.UUID;
 public interface PatientRepository extends JpaRepository<Patient, UUID> {
 
     Page<Patient> findAll(Pageable pageable);
+    Page<Patient> findAllByClinicId(UUID clinicId, Pageable pageable);
+    Page<Patient> findAllByUnits_Id(UUID unitId, Pageable pageable);
 
     @Query("SELECT MAX(p.code) FROM Patient p")
     Optional<Long> findMaxCode();

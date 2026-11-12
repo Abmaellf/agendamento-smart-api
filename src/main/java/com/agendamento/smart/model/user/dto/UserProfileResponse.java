@@ -10,5 +10,7 @@ public record UserProfileResponse(
         String role,
         UUID clinicId,      // Enviando apenas o ID em vez do objeto todo
         UUID tenantId,
-        UUID activeUnitId
+        UUID activeUnitId,
+        String clinicName,
+        String unitName
 ) {}
