@@ -117,7 +117,8 @@ public class AppointmentService {
                     HttpStatus.CONFLICT);
         }
 
-        if (professional != null) {
+        boolean individualService = "Atendimento individual".equalsIgnoreCase(service.getName());
+        if (professional != null && individualService) {
             boolean professionalConflict = active.stream().anyMatch(existing ->
                     existing.getProfessional() != null
                             && existing.getProfessional().getId().equals(professional.getId())
