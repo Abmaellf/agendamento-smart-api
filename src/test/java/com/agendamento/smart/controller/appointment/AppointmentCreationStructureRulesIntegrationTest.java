@@ -146,6 +146,65 @@ class AppointmentCreationStructureRulesIntegrationTest extends PostgresIntegrati
                 .satisfies(appointment -> assertThat(appointment.getProfessional()).isNull());
     }
 
+    @Test
+    void allowsSameProfessionalForDifferentPatientsInCollectiveService() throws Exception {
+        Context context = context("collective-professional");
+        Professional professional = professional(context, context.matrix());
+        Patient secondPatient = patient(context, "Segundo paciente", context.matrix());
+        Instant startsAt = Instant.now().plus(10, ChronoUnit.DAYS).truncatedTo(ChronoUnit.SECONDS);
+
+        performCreate(context, request(context, context.patient().getId(), professional.getId(), startsAt))
+                .andExpect(status().isCreated());
+        performCreate(context, request(context, secondPatient.getId(), professional.getId(), startsAt))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void rejectsSameProfessionalForDifferentPatientsInIndividualService() throws Exception {
+        Context context = context("individual-professional");
+        context.service().setName("Atendimento individual");
+        context.service().setCapacity(2);
+        serviceRepository.saveAndFlush(context.service());
+        Professional professional = professional(context, context.matrix());
+        Patient secondPatient = patient(context, "Segundo paciente", context.matrix());
+        Instant startsAt = Instant.now().plus(10, ChronoUnit.DAYS).truncatedTo(ChronoUnit.SECONDS);
+
+        performCreate(context, request(context, context.patient().getId(), professional.getId(), startsAt))
+                .andExpect(status().isCreated());
+        performCreate(context, request(context, secondPatient.getId(), professional.getId(), startsAt))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PROFESSIONAL_APPOINTMENT_CONFLICT"));
+    }
+
+    @Test
+    void rejectsCollectiveServiceWhenCapacityIsExhausted() throws Exception {
+        Context context = context("collective-capacity");
+        context.service().setCapacity(1);
+        serviceRepository.saveAndFlush(context.service());
+        Professional professional = professional(context, context.matrix());
+        Patient secondPatient = patient(context, "Segundo paciente", context.matrix());
+        Instant startsAt = Instant.now().plus(10, ChronoUnit.DAYS).truncatedTo(ChronoUnit.SECONDS);
+
+        performCreate(context, request(context, context.patient().getId(), professional.getId(), startsAt))
+                .andExpect(status().isCreated());
+        performCreate(context, request(context, secondPatient.getId(), professional.getId(), startsAt))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("SERVICE_CAPACITY_EXCEEDED"));
+    }
+
+    @Test
+    void rejectsSamePatientEvenInCollectiveService() throws Exception {
+        Context context = context("collective-patient-conflict");
+        Professional professional = professional(context, context.matrix());
+        Instant startsAt = Instant.now().plus(10, ChronoUnit.DAYS).truncatedTo(ChronoUnit.SECONDS);
+
+        performCreate(context, request(context, context.patient().getId(), professional.getId(), startsAt))
+                .andExpect(status().isCreated());
+        performCreate(context, request(context, context.patient().getId(), professional.getId(), startsAt))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PATIENT_APPOINTMENT_CONFLICT"));
+    }
+
     private org.springframework.test.web.servlet.ResultActions performCreate(
             Context context,
             AppointmentRequest request) throws Exception {
@@ -156,12 +215,21 @@ class AppointmentCreationStructureRulesIntegrationTest extends PostgresIntegrati
     }
 
     private AppointmentRequest request(Context context, UUID patientId, UUID professionalId) {
+        return request(context, patientId, professionalId,
+                Instant.now().plus(10, ChronoUnit.DAYS).truncatedTo(ChronoUnit.SECONDS));
+    }
+
+    private AppointmentRequest request(
+            Context context,
+            UUID patientId,
+            UUID professionalId,
+            Instant startsAt) {
         return new AppointmentRequest(
                 patientId,
                 context.matrix().getId(),
                 context.service().getId(),
                 professionalId,
-                Instant.now().plus(10, ChronoUnit.DAYS).truncatedTo(ChronoUnit.SECONDS),
+                startsAt,
                 context.service().getDurationMinutes(),
                 context.service().getPrice());
     }
