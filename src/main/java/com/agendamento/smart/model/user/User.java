@@ -1,6 +1,7 @@
 package com.agendamento.smart.model.user;
 
 import com.agendamento.smart.model.clinic.Clinic;
+import com.agendamento.smart.model.unit.ClinicUnit;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
@@ -34,6 +35,10 @@ public class User implements UserDetails {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "clinic_id", nullable = false)
     private Clinic clinic;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "clinic_unit_id")
+    private ClinicUnit clinicUnit;
 
     @JsonIgnore
     @Override

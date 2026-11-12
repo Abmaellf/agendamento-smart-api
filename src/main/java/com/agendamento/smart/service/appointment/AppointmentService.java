@@ -66,6 +66,7 @@ public class AppointmentService {
 
         ClinicUnit unit = unitRepository.findByIdAndClinicId(request.unitId(), clinicId)
                 .orElseThrow(DomainException::tenantResourceNotFound);
+        requireUserUnit(user, unit.getId());
         requireUnitActiveForCreation(unit);
         Patient patient = patientRepository.findByIdAndClinicIdWithUnits(request.patientId(), clinicId)
                 .orElseThrow(DomainException::tenantResourceNotFound);
@@ -169,6 +170,7 @@ public class AppointmentService {
     public AppointmentResponse findById(UUID id, User user) {
         Appointment appointment = appointmentRepository.findByIdAndClinicId(id, user.getClinic().getId())
                 .orElseThrow(DomainException::tenantResourceNotFound);
+        requireUserUnit(user, appointment.getUnit().getId());
         requireClinicReadable(appointment.getClinic());
         requireUnitReadable(appointment.getUnit());
         return toResponse(appointment);
@@ -183,7 +185,14 @@ public class AppointmentService {
         requireValidRange(from, to);
 
         List<Appointment> appointments;
-        if (unitId == null) {
+        if (user.getRole() != UserRole.ADMIN) {
+            UUID allowedUnitId = user.getClinicUnit().getId();
+            if (unitId != null && !unitId.equals(allowedUnitId)) throw DomainException.tenantResourceNotFound();
+            ClinicUnit unit = unitRepository.findByIdAndClinicId(allowedUnitId, clinicId)
+                    .orElseThrow(DomainException::tenantResourceNotFound);
+            requireUnitReadable(unit);
+            appointments = appointmentRepository.findAllByClinicIdAndUnitIdAndStartsAtGreaterThanEqualAndStartsAtLessThanOrderByStartsAtAsc(clinicId, allowedUnitId, from, to);
+        } else if (unitId == null) {
             appointments = appointmentRepository.findReadableByClinicIdAndStartsAtBetween(
                     clinicId, StatusUnit.INATIVO, from, to);
         } else {
@@ -245,6 +254,12 @@ public class AppointmentService {
                     "PATIENT_UNIT_MISMATCH",
                     "O paciente não pertence à unidade do agendamento.",
                     HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+    }
+
+    private void requireUserUnit(User user, UUID unitId) {
+        if (user.getRole() != UserRole.ADMIN && !user.getClinicUnit().getId().equals(unitId)) {
+            throw DomainException.tenantResourceNotFound();
         }
     }
 

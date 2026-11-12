@@ -22,8 +22,8 @@ public class PatientController {
 
 //   @PreAuthorize("hasAnyRole('ADMIN','USER')")
     @GetMapping("/list")
-    public ResponseEntity<PageResponseDTO<PatientResponseDTO>> findAllPatient(Pageable pageable) {
-        PageResponseDTO<PatientResponseDTO> patientResponseDTO = patientService.findAllPatient(pageable);
+    public ResponseEntity<PageResponseDTO<PatientResponseDTO>> findAllPatient(Pageable pageable, Authentication authentication) {
+        PageResponseDTO<PatientResponseDTO> patientResponseDTO = patientService.findAllPatient(pageable, authentication);
         return ResponseEntity.ok().body(patientResponseDTO);
     }
 
