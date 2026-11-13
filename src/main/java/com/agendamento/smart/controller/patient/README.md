@@ -12,7 +12,7 @@ Expor cadastro e listagem paginada de pacientes.
 
 ## Funcionalidades existentes
 
-- `GET /patient/list`: lista todos os pacientes com paginação.
+- `GET /patient/list`: exige autenticação e lista pacientes paginados da clínica; `USER` recebe somente os vínculos da unidade associada.
 - `POST /patient/save`: cria paciente.
 
 ## Dependências internas e externas
@@ -50,7 +50,7 @@ Expor cadastro e listagem paginada de pacientes.
 
 ## Observações técnicas e débitos identificados
 
-- A listagem é pública e não filtra clínica.
+- A listagem é protegida e filtra clínica/unidade a partir do principal autenticado; parâmetros de paginação não ampliam o escopo.
 - `PatientRequestDTO` não possui constraints; `@Valid` não rejeita nome/clínica nulos antes do service/banco.
 - A injeção é por campo, diferente dos controllers mais novos.
 - A criação responde 200 em vez de um status específico de criação e escreve em `System.out`.

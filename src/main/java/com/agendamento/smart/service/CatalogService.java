@@ -6,6 +6,8 @@ import com.agendamento.smart.dtos.catalog.ProfessionalOptionResponse;
 import com.agendamento.smart.dtos.catalog.ServiceOptionResponse;
 import com.agendamento.smart.dtos.catalog.UnitOptionResponse;
 import com.agendamento.smart.dtos.catalog.UpdateServiceRequest;
+import com.agendamento.smart.model.patient.Patient;
+import com.agendamento.smart.model.professional.Professional;
 import com.agendamento.smart.model.serviceoffering.ServiceOffering;
 import com.agendamento.smart.model.user.User;
 import com.agendamento.smart.repository.PatientRepository;
@@ -29,19 +31,24 @@ public class CatalogService {
     private final UnitRepository unitRepository;
     private final ServiceOfferingRepository serviceRepository;
     private final ProfessionalRepository professionalRepository;
+    private final UnitScopeService unitScopeService;
 
     @Transactional(readOnly = true)
     public List<PatientOptionResponse> patients(User user) {
         UUID clinicId = user.getClinic().getId();
         UUID tenantId = tenantId(user);
-        return patientRepository.findAllByClinicId(clinicId).stream()
+        List<Patient> patients = unitScopeService.isAdmin(user)
+                ? patientRepository.findAllByClinicId(clinicId)
+                : patientRepository.findAllByClinicIdAndUnitId(
+                        clinicId, unitScopeService.requireSingleAllowedUnitId(user));
+        return patients.stream()
                 .map(patient -> new PatientOptionResponse(patient.getId(), patient.getName(), tenantId))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<UnitOptionResponse> units(User user) {
-        return unitRepository.findAllByClinicId(user.getClinic().getId()).stream()
+        return unitScopeService.allowedUnits(user).stream()
                 .map(unit -> new UnitOptionResponse(
                         unit.getId(), unit.getName(), unit.getTenantId(), unit.getTimeZone()))
                 .toList();
@@ -61,7 +68,13 @@ public class CatalogService {
         ServiceOffering service = serviceRepository.findByIdAndClinicId(serviceId, clinicId)
                 .orElseThrow(DomainException::tenantResourceNotFound);
         UUID tenantId = tenantId(user);
-        return professionalRepository.findDistinctByClinicIdAndServicesId(clinicId, service.getId()).stream()
+        List<Professional> professionals = unitScopeService.isAdmin(user)
+                ? professionalRepository.findDistinctByClinicIdAndServicesId(clinicId, service.getId())
+                : professionalRepository.findDistinctByClinicIdAndUnitIdAndServicesId(
+                        clinicId,
+                        unitScopeService.requireSingleAllowedUnitId(user),
+                        service.getId());
+        return professionals.stream()
                 .map(professional -> new ProfessionalOptionResponse(
                         professional.getId(),
                         professional.getName(),
@@ -81,7 +94,8 @@ public class CatalogService {
     }
 
     private UUID tenantId(User user) {
-        return unitRepository.findFirstByClinicIdOrderByNameAsc(user.getClinic().getId())
+        return unitScopeService.allowedUnits(user).stream()
+                .findFirst()
                 .map(unit -> unit.getTenantId())
                 .orElseThrow(() -> new DomainException(
                         "TENANT_RESOURCE_NOT_FOUND", "Cadastro não encontrado.", HttpStatus.NOT_FOUND));

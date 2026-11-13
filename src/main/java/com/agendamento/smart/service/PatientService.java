@@ -34,12 +34,16 @@ public class PatientService implements PatientServiceInt{
     private final ClinicRepository clinicRepository;
     private final UnitRepository unitRepository;
     private final PatientMapper patientMapper;
+    private final UnitScopeService unitScopeService;
     @Override
     public PageResponseDTO<PatientResponseDTO> findAllPatient(Pageable pageable, Authentication authentication){
         User user = authenticatedUser(authentication);
-        var pageEntity = user.getRole() == com.agendamento.smart.model.user.UserRole.ADMIN
+        var pageEntity = unitScopeService.isAdmin(user)
                 ? patientRepository.findAllByClinicId(user.getClinic().getId(), pageable)
-                : patientRepository.findAllByUnits_Id(user.getClinicUnit().getId(), pageable);
+                : patientRepository.findAllByClinicIdAndUnits_Id(
+                        user.getClinic().getId(),
+                        unitScopeService.requireSingleAllowedUnitId(user),
+                        pageable);
         var pageDto = pageEntity.map(patientMapper::toDto);
 
         return PageResponseDTO.from(pageDto);

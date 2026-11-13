@@ -60,7 +60,8 @@ class UserRegistrationControllerIntegrationTest extends PostgresIntegrationTestS
         Context context = clinic("one");
         long professionalsBefore = professionalRepository.count();
         RegisterDTO request = new RegisterDTO(
-                "new-user@example.test", "NewUser@123", UserRole.USER, false, null);
+                "new-user@example.test", "NewUser@123", UserRole.USER,
+                context.registration().unitId(), false, null);
 
         mockMvc.perform(post("/user/register/{clinicId}", context.registration().clinicId())
                         .header("Authorization", bearer(context.admin()))
@@ -83,6 +84,7 @@ class UserRegistrationControllerIntegrationTest extends PostgresIntegrationTestS
                 "clinical-professional@example.test",
                 "Professional@123",
                 UserRole.USER,
+                context.registration().unitId(),
                 true,
                 new RegisterDTO.ProfessionalData("Profissional Clínico", Set.of(5, 1, 3)));
 
@@ -108,7 +110,8 @@ class UserRegistrationControllerIntegrationTest extends PostgresIntegrationTestS
         long usersBefore = userRepository.count();
 
         RegisterDTO otherClinic = new RegisterDTO(
-                "foreign@example.test", "Foreign@123", UserRole.USER, false, null);
+                "foreign@example.test", "Foreign@123", UserRole.USER,
+                second.registration().unitId(), false, null);
         mockMvc.perform(post("/user/register/{clinicId}", second.registration().clinicId())
                         .header("Authorization", bearer(first.admin()))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -117,7 +120,8 @@ class UserRegistrationControllerIntegrationTest extends PostgresIntegrationTestS
                 .andExpect(jsonPath("$.code").value("CLINIC_ACCESS_DENIED"));
 
         RegisterDTO secondAdmin = new RegisterDTO(
-                "second-admin@example.test", "SecondAdmin@123", UserRole.ADMIN, false, null);
+                "second-admin@example.test", "SecondAdmin@123", UserRole.ADMIN,
+                first.registration().unitId(), false, null);
         mockMvc.perform(post("/user/register/{clinicId}", first.registration().clinicId())
                         .header("Authorization", bearer(first.admin()))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -139,6 +143,7 @@ class UserRegistrationControllerIntegrationTest extends PostgresIntegrationTestS
                 context.admin().getLogin().toUpperCase(),
                 "Duplicate@123",
                 UserRole.USER,
+                context.registration().unitId(),
                 false,
                 null);
         mockMvc.perform(post("/user/register/{clinicId}", context.registration().clinicId())
@@ -174,6 +179,7 @@ class UserRegistrationControllerIntegrationTest extends PostgresIntegrationTestS
                 "rollback-user@example.test",
                 "Rollback@123",
                 UserRole.USER,
+                context.registration().unitId(),
                 true,
                 new RegisterDTO.ProfessionalData("X".repeat(256), Set.of(1)));
         var authentication = new UsernamePasswordAuthenticationToken(

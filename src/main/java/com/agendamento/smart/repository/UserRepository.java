@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Repository;
 import java.util.UUID;
+import java.util.List;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
@@ -18,4 +19,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     long countByClinicId(UUID clinicId);
 
     long countByClinicIdAndRole(UUID clinicId, com.agendamento.smart.model.user.UserRole role);
+
+    List<User> findAllByClinicId(UUID clinicId);
+
+    List<User> findAllByClinicIdAndClinicUnitId(UUID clinicId, UUID clinicUnitId);
 }

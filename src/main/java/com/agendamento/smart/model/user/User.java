@@ -37,8 +37,17 @@ public class User implements UserDetails {
     private Clinic clinic;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "clinic_unit_id")
+    @JoinColumn(name = "clinic_unit_id", nullable = false)
     private ClinicUnit clinicUnit;
+
+    @PrePersist
+    @PreUpdate
+    private void validateClinicUnit() {
+        if (clinic != null && clinicUnit != null
+                && !clinic.getId().equals(clinicUnit.getClinic().getId())) {
+            throw new IllegalStateException("A unidade do usuário deve pertencer à sua clínica");
+        }
+    }
 
     @JsonIgnore
     @Override

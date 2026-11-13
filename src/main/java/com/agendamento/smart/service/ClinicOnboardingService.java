@@ -104,6 +104,7 @@ public class ClinicOnboardingService {
                 .password(passwordEncoder.encode(data.password()))
                 .role(role)
                 .clinic(clinic)
+                .clinicUnit(unit)
                 .build();
         user = userRepository.saveAndFlush(user);
 

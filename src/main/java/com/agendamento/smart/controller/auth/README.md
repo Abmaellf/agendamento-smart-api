@@ -14,8 +14,8 @@ Expor login, listagem de usuários e consulta do usuário autenticado.
 ## Funcionalidades existentes
 
 - `POST /auth/login`: login público.
-- `GET /auth/list`: listagem completa para `ADMIN` ou `USER`.
-- `GET /auth/me`: usuário corrente para `ADMIN` ou `USER`.
+- `GET /auth/list`: listagem administrativa da própria clínica, somente para `ADMIN`, sem senha/hash e com filtro opcional de unidade.
+- `GET /auth/me`: usuário corrente para `ADMIN` ou `USER`, incluindo a unidade persistida e seus nomes de exibição.
 
 ## Dependências internas e externas
 
@@ -37,7 +37,7 @@ Expor login, listagem de usuários e consulta do usuário autenticado.
 ## Fluxos de entrada
 
 - Login: credenciais -> `AuthenticationManager` -> JWT -> cookie e `LoginResponseDTO`.
-- Lista: JWT -> autorização por papel -> `UserRepository.findAll` -> entidades `User`.
+- Lista: JWT -> autorização `ADMIN` -> validação da clínica/unidade -> DTO seguro, sem serializar entidades `User`.
 - Usuário atual: JWT -> `SecurityContext` -> `UserService.currentUserService`.
 
 ## Arquivos críticos
@@ -56,7 +56,7 @@ Expor login, listagem de usuários e consulta do usuário autenticado.
 ## Observações técnicas e débitos identificados
 
 - `LoginResponseDTO` e a listagem serializam `User`; `password` não está ignorado na serialização, permitindo exposição do hash.
-- O controller acessa `UserRepository` diretamente.
+- O controller acessa `UserRepository` diretamente, mas limita a clínica autenticada e não retorna senha/hash.
 - O cookie tem duração de uma hora, enquanto o token expira em duas horas. `JWT_COOKIE_SECURE` controla o atributo `Secure`; o profile `prod` usa `true` por padrão e os demais usam `false`.
 - A origem `http:localhost:3000` declarada por `@CrossOrigin` está malformada; a configuração global usa `http://localhost:3000`.
 - Há `System.out.println` no fluxo de login.
