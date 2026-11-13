@@ -15,7 +15,8 @@ Orquestrar autenticação Spring, clínicas, pacientes, usuário atual e informa
 ## Funcionalidades existentes
 
 - `AuthorizationService`: integração `UserDetailsService`.
-- `PatientService`: paginação e cadastro.
+- `PatientService`: paginação e cadastro, com escopo de clínica/unidade derivado da sessão.
+- `UnitScopeService`: resolve todas as unidades da clínica para `ADMIN` e apenas `clinicUnit` para `USER`.
 - `UserService`: existência de login e principal atual.
 - `ClinicService`: criação sem consumidor encontrado.
 - `ProjectInfoService`: versão configurada.
@@ -39,7 +40,7 @@ Controllers, `repository`, `mapper`, `model`, `dtos`, `infra/security` e `servic
 ## Fluxos de entrada
 
 - Autenticação: login -> repository -> `UserDetails`.
-- Paciente: controller -> clínica/repository -> normalização/duplicidade -> mapper -> repository.
+- Paciente: principal autenticado -> escopo de unidade -> consulta paginada -> mapper -> wrapper de página.
 - Usuário atual: `SecurityContext` -> repository por UUID.
 - Versão: controller -> properties.
 

@@ -13,6 +13,12 @@ public interface ProfessionalRepository extends JpaRepository<Professional, UUID
     List<Professional> findDistinctByClinicIdAndServicesId(UUID clinicId, UUID serviceId);
 
     @EntityGraph(attributePaths = "services")
+    List<Professional> findDistinctByClinicIdAndUnitIdAndServicesId(
+            UUID clinicId,
+            UUID unitId,
+            UUID serviceId);
+
+    @EntityGraph(attributePaths = "services")
     Optional<Professional> findByIdAndClinicId(UUID id, UUID clinicId);
 
     List<Professional> findAllByClinicId(UUID clinicId);

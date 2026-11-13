@@ -88,6 +88,7 @@ class ClinicStructureEndToEndIntegrationTest extends PostgresIntegrationTestSupp
                 "clinical-integrated-first@example.test",
                 "Professional@123",
                 UserRole.USER,
+                first.unitId(),
                 true,
                 new RegisterDTO.ProfessionalData(
                         "Profissional Integrado",

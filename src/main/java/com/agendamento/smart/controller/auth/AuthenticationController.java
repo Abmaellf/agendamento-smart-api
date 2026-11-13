@@ -5,6 +5,7 @@ import com.agendamento.smart.dtos.LoginResponseDTO;
 import com.agendamento.smart.infra.security.TokenService;
 import com.agendamento.smart.model.user.User;
 import com.agendamento.smart.model.user.dto.UserProfileResponse;
+import com.agendamento.smart.model.user.dto.UserListResponse;
 import com.agendamento.smart.repository.UserRepository;
 import com.agendamento.smart.service.UserService;
 import com.agendamento.smart.repository.UnitRepository;
@@ -22,8 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.UUID;
 
 @CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
 @RestController
@@ -79,15 +79,36 @@ public class AuthenticationController {
     }
 
     @GetMapping("/list")
-    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
-    public ResponseEntity<List<User>> list(){
-        List<User> user = userRepository.findAll();
-        return ResponseEntity.ok(user);
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<UserListResponse>> list(
+            @RequestParam(required = false) UUID unitId,
+            Authentication authentication) {
+        User principal = (User) authentication.getPrincipal();
+        List<User> users;
+        if (unitId == null) {
+            users = userRepository.findAllByClinicId(principal.getClinic().getId());
+        } else {
+            unitRepository.findByIdAndClinicId(unitId, principal.getClinic().getId())
+                    .orElseThrow(com.agendamento.smart.controller.exception.DomainException::tenantResourceNotFound);
+            users = userRepository.findAllByClinicIdAndClinicUnitId(
+                    principal.getClinic().getId(), unitId);
+        }
+        return ResponseEntity.ok(users.stream().map(this::toListResponse).toList());
     }
 
     @GetMapping("/me")
     public ResponseEntity<UserProfileResponse> me(Authentication authentication){
         UserProfileResponse profile = userService.getUserProfile(authentication);
         return ResponseEntity.ok(profile);
+    }
+
+    private UserListResponse toListResponse(User user) {
+        return new UserListResponse(
+                user.getId(),
+                user.getLogin(),
+                user.getRole(),
+                user.getClinic().getId(),
+                user.getClinicUnit() == null ? null : user.getClinicUnit().getId(),
+                user.getClinicUnit() == null ? null : user.getClinicUnit().getName());
     }
 }

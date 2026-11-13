@@ -4,7 +4,6 @@ import com.agendamento.smart.controller.exception.DomainException;
 import com.agendamento.smart.dtos.user.RegisterDTO;
 import com.agendamento.smart.model.professional.Professional;
 import com.agendamento.smart.model.unit.ClinicUnit;
-import com.agendamento.smart.model.unit.TypeUnit;
 import com.agendamento.smart.model.user.User;
 import com.agendamento.smart.model.user.UserRole;
 import com.agendamento.smart.repository.ProfessionalRepository;
@@ -33,6 +32,12 @@ public class UserRegistrationService {
     @Transactional
     public void register(UUID clinicId, RegisterDTO request, Authentication authentication) {
         User principal = authenticatedUser(authentication);
+        if (principal.getRole() != UserRole.ADMIN) {
+            throw new DomainException(
+                    "USER_REGISTRATION_FORBIDDEN",
+                    "Somente administradores podem cadastrar usuários.",
+                    HttpStatus.FORBIDDEN);
+        }
         if (!principal.getClinic().getId().equals(clinicId)) {
             throw new DomainException(
                     "CLINIC_ACCESS_DENIED",
@@ -54,25 +59,20 @@ public class UserRegistrationService {
                     HttpStatus.CONFLICT);
         }
 
-        ClinicUnit matrix = null;
-        if (Boolean.TRUE.equals(request.isProfessional())) {
-            matrix = unitRepository.findByClinicIdAndType(clinicId, TypeUnit.MATRIZ)
-                    .orElseThrow(() -> new DomainException(
-                            "CLINIC_MATRIX_NOT_FOUND",
-                            "A clínica não possui MATRIZ cadastrada.",
-                            HttpStatus.CONFLICT));
-        }
+        ClinicUnit unit = unitRepository.findByIdAndClinicId(request.unitId(), clinicId)
+                .orElseThrow(DomainException::tenantResourceNotFound);
 
         User user = User.builder()
                 .login(login)
                 .password(passwordEncoder.encode(request.password()))
                 .role(UserRole.USER)
                 .clinic(principal.getClinic())
+                .clinicUnit(unit)
                 .build();
         user = userRepository.saveAndFlush(user);
 
         if (Boolean.TRUE.equals(request.isProfessional())) {
-            createProfessional(user, matrix, request.professional());
+            createProfessional(user, unit, request.professional());
         }
     }
 

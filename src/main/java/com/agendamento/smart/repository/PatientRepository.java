@@ -17,7 +17,7 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
 
     Page<Patient> findAll(Pageable pageable);
     Page<Patient> findAllByClinicId(UUID clinicId, Pageable pageable);
-    Page<Patient> findAllByUnits_Id(UUID unitId, Pageable pageable);
+    Page<Patient> findAllByClinicIdAndUnits_Id(UUID clinicId, UUID unitId, Pageable pageable);
 
     @Query("SELECT MAX(p.code) FROM Patient p")
     Optional<Long> findMaxCode();
@@ -25,6 +25,12 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
     Optional<Patient> findByName(String name);
 
     List<Patient> findAllByClinicId(UUID clinicId);
+
+    @Query("select distinct p from Patient p join p.units unit "
+            + "where p.clinic.id = :clinicId and unit.id = :unitId")
+    List<Patient> findAllByClinicIdAndUnitId(
+            @Param("clinicId") UUID clinicId,
+            @Param("unitId") UUID unitId);
 
     Optional<Patient> findByIdAndClinicId(UUID id, UUID clinicId);
 

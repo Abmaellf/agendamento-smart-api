@@ -3,7 +3,6 @@ package com.agendamento.smart.service;
 import com.agendamento.smart.controller.exception.ResourceNotFoundException;
 import com.agendamento.smart.model.user.User;
 import com.agendamento.smart.model.user.dto.UserProfileResponse;
-import com.agendamento.smart.repository.UnitRepository;
 import com.agendamento.smart.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,9 +15,6 @@ import org.springframework.stereotype.Service;
 @AllArgsConstructor
 public class UserService {
     private UserRepository userRepository;
-
-    @Autowired
-    private UnitRepository unitRepository;
 
     public boolean existsByLogin(String login) {
        User usr =  (User) userRepository.findByLogin(login);
@@ -48,8 +44,10 @@ public class UserService {
         User user = currentUserService(authentication);
 
         // 2. Busca a unidade (Lógica que estava no controller)
-        var unit = user.getClinicUnit() != null ? user.getClinicUnit() : unitRepository.findFirstByClinicIdOrderByNameAsc(user.getClinic().getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Unidade ativa não encontrada"));
+        var unit = user.getClinicUnit();
+        if (unit == null || !unit.getClinic().getId().equals(user.getClinic().getId())) {
+            throw new ResourceNotFoundException("Unidade ativa não encontrada");
+        }
 
         // 3. Define a Role
         String roleStr = user.getRole() == com.agendamento.smart.model.user.UserRole.USER ? "BASIC" : "ADMIN";
