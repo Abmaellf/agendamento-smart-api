@@ -22,6 +22,9 @@ Versionar o schema PostgreSQL utilizado pela API.
 - `V008__create_table_scheduling.sql`: cria a estrutura de agendamentos ainda com o nome físico legado `SCHEDULING`.
 - `V009`: renomeia a tabela para `APPOINTMENT`, a coluna temporal legada para `appointment_date` e os nomes físicos associados.
 - `V010`: adiciona status de clínica/unidade, tipo de unidade, vínculo exclusivo do profissional com unidade/usuário, vínculo paciente-unidade e unicidades condicionais de `ADMIN` e MATRIZ.
+- `V012`: cria `SERVICE_PACKAGE` e `SERVICE_PACKAGE_WEEK_DAY`, isolados por clínica, com FKs compostas para unidade, serviço e criador, preço/sessões validados e chave composta que recusa dia repetido.
+
+`V012__create_service_packages.sql` não cria contrato de paciente, série de agendamentos ou ocorrências: esse modelo é reservado para a SPEC 02.
 
 Os identificadores usam `UUID` nativo. `pathology` usa `jsonb`; `starts_at`, `created_at` e `updated_at` de agendamento usam `timestamptz` (`TIMESTAMP WITH TIME ZONE`). Campos que representam data/hora local sem deslocamento permanecem `TIMESTAMP WITHOUT TIME ZONE`/`TIME WITHOUT TIME ZONE`.
 
