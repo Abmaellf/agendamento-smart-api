@@ -22,6 +22,10 @@ Orquestrar autenticação Spring, clínicas, pacientes, usuário atual e informa
 - `ProjectInfoService`: versão configurada.
 - `PatientServiceInt`: interface parcial apenas para listagem.
 
+`ServicePackageService` é transacional e permite a administradores criar, consultar, editar e ativar/desativar definições de pacote. A clínica é derivada do usuário autenticado; unidade e serviço são sempre resolvidos dentro dela. O serviço normaliza descrição e preço decimal, valida dias sem duplicidade e devolve a frequência semanal derivada.
+
+`ServicePackageUsageService` é a extensão preparada para a SPEC 02. Nesta etapa ele informa que não há vínculos de agendamento e, portanto, a definição permanece editável. Quando a SPEC 02 criar o vínculo pacote-agendamento, a implementação deverá consultar esse vínculo para fazer `PATCH` e `PATCH /status` retornarem `PACKAGE_IMMUTABLE` sem persistir alteração parcial.
+
 ## Dependências internas e externas
 
 - Internas: repositories, mappers, DTOs, entidades e `ProjectInfoProperties`.

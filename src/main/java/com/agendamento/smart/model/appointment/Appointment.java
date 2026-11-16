@@ -6,6 +6,7 @@ import com.agendamento.smart.model.professional.Professional;
 import com.agendamento.smart.model.serviceoffering.ServiceOffering;
 import com.agendamento.smart.model.unit.ClinicUnit;
 import com.agendamento.smart.model.user.User;
+import com.agendamento.smart.model.packageappointment.PackageAppointmentContract;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -84,6 +85,10 @@ public class Appointment {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "created_by", nullable = false, updatable = false)
     private User createdBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "package_contract_id")
+    private PackageAppointmentContract packageContract;
 
     @Column(name = "starts_at")
     private Instant startsAt;

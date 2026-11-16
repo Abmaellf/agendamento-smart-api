@@ -17,6 +17,8 @@ Definir a porta concreta de persistência Spring Data JPA para clínicas, usuár
 - `ClinicRepository`, `UserRepository`, `PatientRepository` e `AppointmentRepository`.
 - Queries derivadas e JPQL; não há mais conversão binária de UUID em query nativa.
 
+`ServicePackageRepository` consulta definições exclusivamente por clínica (`findByIdAndClinicId` e `findAllByClinicIdOrderByNameAsc`). O serviço aplica os filtros opcionais de unidade, serviço, situação, quantidade de sessões e nome depois dessa restrição obrigatória de escopo. Não existe operação de exclusão física.
+
 ## Dependências internas e externas
 
 - Internas: todas as entidades persistentes.
