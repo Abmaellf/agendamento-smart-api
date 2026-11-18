@@ -8,42 +8,102 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface PatientRepository extends JpaRepository<Patient, UUID> {
 
-    Page<Patient> findAll(Pageable pageable);
-    Page<Patient> findAllByClinicId(UUID clinicId, Pageable pageable);
-    Page<Patient> findAllByClinicIdAndUnits_Id(UUID clinicId, UUID unitId, Pageable pageable);
+    @Query(
+            value = """
+                    select p
+                    from Patient p
+                    where p.clinic.id = :clinicId
+                      and (
+                         cast(:name as string) is null
+                        or lower(p.name) like lower(concat('%', cast(:name as text), '%'))
+                      )
+                    """,
+            countQuery = """
+                    select count(p)
+                    from Patient p
+                    where p.clinic.id = :clinicId
+                      and (
+                         cast(:name as string) is null
+                        or lower(p.name) like lower(concat('%', cast(:name as text), '%'))
+                      )
+                    """)
+    Page<Patient> findPageByClinicIdAndName(
+            @Param("clinicId") UUID clinicId,
+            @Param("name") String name,
+            Pageable pageable);
 
-    @Query("SELECT MAX(p.code) FROM Patient p")
+    @Query(
+            value = """
+                    select distinct p
+                    from Patient p
+                    join p.units unit
+                    where p.clinic.id = :clinicId
+                      and unit.id = :unitId
+                      and (
+                         cast(:name as string) is null
+                        or lower(p.name) like lower(concat('%', cast(:name as text), '%'))
+                      )
+                    """,
+            countQuery = """
+                    select count(distinct p.id)
+                    from Patient p
+                    join p.units unit
+                    where p.clinic.id = :clinicId
+                      and unit.id = :unitId
+                      and (
+                         cast(:name as string) is null
+                        or lower(p.name) like lower(concat('%', cast(:name as text), '%'))
+                      )
+                    """)
+    Page<Patient> findPageByClinicIdAndUnitIdAndName(
+            @Param("clinicId") UUID clinicId,
+            @Param("unitId") UUID unitId,
+            @Param("name") String name,
+            Pageable pageable);
+
+    @Query("select max(p.code) from Patient p")
     Optional<Long> findMaxCode();
 
     Optional<Patient> findByName(String name);
 
     List<Patient> findAllByClinicId(UUID clinicId);
 
-    @Query("select distinct p from Patient p join p.units unit "
-            + "where p.clinic.id = :clinicId and unit.id = :unitId")
+    @Query("""
+            select distinct p
+            from Patient p
+            join p.units unit
+            where p.clinic.id = :clinicId
+              and unit.id = :unitId
+            """)
     List<Patient> findAllByClinicIdAndUnitId(
             @Param("clinicId") UUID clinicId,
             @Param("unitId") UUID unitId);
 
     Optional<Patient> findByIdAndClinicId(UUID id, UUID clinicId);
 
-    @Query("select distinct p from Patient p left join fetch p.units "
-            + "where p.id = :id and p.clinic.id = :clinicId")
+    @Query("""
+            select distinct p
+            from Patient p
+            left join fetch p.units
+            where p.id = :id
+              and p.clinic.id = :clinicId
+            """)
     Optional<Patient> findByIdAndClinicIdWithUnits(
             @Param("id") UUID id,
             @Param("clinicId") UUID clinicId);
 
-    @Query("select distinct p from Patient p left join fetch p.units where p.id = :id")
+    @Query("""
+            select distinct p
+            from Patient p
+            left join fetch p.units
+            where p.id = :id
+            """)
     Optional<Patient> findByIdWithUnits(@Param("id") UUID id);
-
-        /* @Query(value = "SELECT * FROM tb_book WHERE publisher_id = :id", nativeQuery = true)
-        List<Patient> findPatientByClinicId(@Param("id") String id); */
-
 }
