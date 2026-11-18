@@ -31,8 +31,10 @@ public class CatalogController {
     private final CatalogService catalogService;
 
     @GetMapping("/patients")
-    public CatalogResponse<PatientOptionResponse> patients(@AuthenticationPrincipal User user) {
-        return new CatalogResponse<>(catalogService.patients(user));
+    public CatalogResponse<PatientOptionResponse> patients(
+            @AuthenticationPrincipal User user,
+            @RequestParam(required = false) UUID unitId) {
+        return new CatalogResponse<>(catalogService.patients(user, unitId));
     }
 
     @GetMapping("/units")

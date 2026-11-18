@@ -34,13 +34,26 @@ public class CatalogService {
     private final UnitScopeService unitScopeService;
 
     @Transactional(readOnly = true)
-    public List<PatientOptionResponse> patients(User user) {
+    public List<PatientOptionResponse> patients(User user, UUID requestedUnitId) {
         UUID clinicId = user.getClinic().getId();
         UUID tenantId = tenantId(user);
-        List<Patient> patients = unitScopeService.isAdmin(user)
+        UUID unitId = requestedUnitId;
+        if (unitScopeService.isAdmin(user)) {
+            if (unitId != null) {
+                unitRepository.findByIdAndClinicId(unitId, clinicId)
+                        .orElseThrow(DomainException::tenantResourceNotFound);
+            }
+        } else {
+            UUID allowedUnitId = unitScopeService.requireSingleAllowedUnitId(user);
+            if (unitId != null && !unitId.equals(allowedUnitId)) {
+                throw DomainException.tenantResourceNotFound();
+            }
+            unitId = allowedUnitId;
+        }
+
+        List<Patient> patients = unitId == null
                 ? patientRepository.findAllByClinicId(clinicId)
-                : patientRepository.findAllByClinicIdAndUnitId(
-                        clinicId, unitScopeService.requireSingleAllowedUnitId(user));
+                : patientRepository.findAllByClinicIdAndUnitId(clinicId, unitId);
         return patients.stream()
                 .map(patient -> new PatientOptionResponse(patient.getId(), patient.getName(), tenantId))
                 .toList();

@@ -178,6 +178,35 @@ class BasicUnitScopeIntegrationTest extends PostgresIntegrationTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(2)));
 
+        mockMvc.perform(get("/api/patients")
+                        .header("Authorization", bearerToken(adminToken))
+                        .param("unitId", branch.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].id").value(branchPatient.getId().toString()));
+
+        mockMvc.perform(get("/api/patients")
+                        .header("Authorization", bearerToken(basicToken))
+                        .param("unitId", registration.unitId().toString()))
+                .andExpect(status().isNotFound());
+
+        Clinic foreignCatalogClinic = clinicRepository.saveAndFlush(
+                Clinic.builder().name("Outra clínica catálogo").build());
+        ClinicUnit foreignCatalogUnit = new ClinicUnit();
+        foreignCatalogUnit.setId(UUID.randomUUID());
+        foreignCatalogUnit.setClinic(foreignCatalogClinic);
+        foreignCatalogUnit.setTenantId(foreignCatalogClinic.getId());
+        foreignCatalogUnit.setName("Unidade externa");
+        foreignCatalogUnit.setTimeZone("America/Cuiaba");
+        foreignCatalogUnit.setStatus(StatusUnit.ATIVO);
+        foreignCatalogUnit.setType(TypeUnit.FILIAL);
+        unitRepository.saveAndFlush(foreignCatalogUnit);
+
+        mockMvc.perform(get("/api/patients")
+                        .header("Authorization", bearerToken(adminToken))
+                        .param("unitId", foreignCatalogUnit.getId().toString()))
+                .andExpect(status().isNotFound());
+
         mockMvc.perform(get("/api/professionals")
                         .header("Authorization", bearerToken(adminToken))
                         .param("serviceId", service.getId().toString()))

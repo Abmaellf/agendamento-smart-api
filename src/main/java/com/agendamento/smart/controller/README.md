@@ -7,7 +7,7 @@ Agrupar adaptadores HTTP e hospedar o endpoint técnico de diagnóstico do banco
 ## Responsabilidades principais
 
 - Expor `GET /debug/db`.
-- Delegar autenticação, versão, pacientes, usuários e agendamentos aos submódulos de controller.
+- Delegar autenticação, versão, catálogos, pacientes, usuários e agendamentos aos submódulos de controller.
 
 ## Funcionalidades existentes
 
