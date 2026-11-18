@@ -17,6 +17,7 @@ Orquestrar autenticação Spring, clínicas, pacientes, usuário atual e informa
 - `AuthorizationService`: integração `UserDetailsService`.
 - `PatientService`: paginação e cadastro, com escopo de clínica/unidade derivado da sessão.
 - `UnitScopeService`: resolve todas as unidades da clínica para `ADMIN` e apenas `clinicUnit` para `USER`.
+- `CatalogService`: fornece catálogos de pacientes, unidades, serviços e profissionais, filtrando pacientes por `unitId` autorizado quando solicitado.
 - `UserService`: existência de login e principal atual.
 - `ClinicService`: criação sem consumidor encontrado.
 - `ProjectInfoService`: versão configurada.
