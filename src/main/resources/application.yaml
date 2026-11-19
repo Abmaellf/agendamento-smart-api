@@ -63,6 +63,12 @@ api:
 project:
   version: "@project.version@"
 
+appointments:
+  status-monitor:
+    enabled: ${APPOINTMENTS_STATUS_MONITOR_ENABLED:true}
+    fixed-delay-ms: ${APPOINTMENTS_STATUS_MONITOR_FIXED_DELAY_MS:60000}
+    initial-delay-ms: ${APPOINTMENTS_STATUS_MONITOR_INITIAL_DELAY_MS:10000}
+
 
 # ============================================================
 # LOGGING

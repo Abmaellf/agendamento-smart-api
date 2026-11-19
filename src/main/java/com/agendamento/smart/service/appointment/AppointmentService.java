@@ -1,6 +1,7 @@
 package com.agendamento.smart.service.appointment;
 
 import com.agendamento.smart.controller.exception.DomainException;
+import com.agendamento.smart.controller.appointment.AppointmentNoShowDeadlineException;
 import com.agendamento.smart.dtos.appointment.AppointmentRequest;
 import com.agendamento.smart.dtos.appointment.AppointmentResponse;
 import com.agendamento.smart.dtos.appointment.AppointmentResponse.ReferenceResponse;
@@ -29,6 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -42,6 +45,7 @@ public class AppointmentService {
 
     private static final DateTimeFormatter INSTANT_WITH_MILLIS =
             new DateTimeFormatterBuilder().appendInstant(3).toFormatter();
+    private static final Duration NO_SHOW_GRACE_PERIOD = Duration.ofMinutes(10);
 
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
@@ -49,6 +53,7 @@ public class AppointmentService {
     private final UnitRepository unitRepository;
     private final ServiceOfferingRepository serviceRepository;
     private final ProfessionalRepository professionalRepository;
+    private final Clock clock;
 
     @Transactional
     public AppointmentResponse create(AppointmentRequest request, User user, String idempotencyKey) {
@@ -76,7 +81,7 @@ public class AppointmentService {
         Professional professional = resolveProfessional(
                 request.professionalId(), clinicId, unit.getId(), service.getId());
 
-        if (!request.startsAt().isAfter(Instant.now())) {
+        if (!request.startsAt().isAfter(clock.instant())) {
             throw new DomainException(
                     "APPOINTMENT_IN_THE_PAST",
                     "Não é possível criar agendamento no passado.",
@@ -166,23 +171,25 @@ public class AppointmentService {
         return toResponse(appointmentRepository.saveAndFlush(appointment));
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AppointmentResponse findById(UUID id, User user) {
         Appointment appointment = appointmentRepository.findByIdAndClinicId(id, user.getClinic().getId())
                 .orElseThrow(DomainException::tenantResourceNotFound);
         requireUserUnit(user, appointment.getUnit().getId());
         requireClinicReadable(appointment.getClinic());
         requireUnitReadable(appointment.getUnit());
+        markAsNoShowIfOverdue(appointment, clock.instant());
         return toResponse(appointment);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<AppointmentResponse> findAll(User user, UUID unitId, Instant from, Instant to) {
         UUID clinicId = user.getClinic().getId();
         Clinic clinic = clinicRepository.findById(clinicId)
                 .orElseThrow(DomainException::tenantResourceNotFound);
         requireClinicReadable(clinic);
         requireValidRange(from, to);
+        reconcileOverdueAppointments(clinicId, clock.instant());
 
         List<Appointment> appointments;
         if (user.getRole() != UserRole.ADMIN) {
@@ -208,6 +215,83 @@ public class AppointmentService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional(noRollbackFor = AppointmentNoShowDeadlineException.class)
+    public AppointmentResponse updateStatus(UUID id, AppointmentStatus requestedStatus, User user) {
+        if (requestedStatus != AppointmentStatus.ATENDENDO
+                && requestedStatus != AppointmentStatus.CANCELADO) {
+            throw invalidStatusTransition();
+        }
+
+        Appointment appointment = appointmentRepository
+                .findByIdAndClinicIdForUpdate(id, user.getClinic().getId())
+                .orElseThrow(DomainException::tenantResourceNotFound);
+        requireUserUnit(user, appointment.getUnit().getId());
+        requireClinicReadable(appointment.getClinic());
+        requireUnitReadable(appointment.getUnit());
+
+        if (appointment.getStatus() != AppointmentStatus.AGENDADO) {
+            throw invalidStatusTransition();
+        }
+        if (isNoShowDue(appointment, clock.instant())) {
+            appointment.setStatus(AppointmentStatus.FALTA);
+            appointmentRepository.saveAndFlush(appointment);
+            throw new AppointmentNoShowDeadlineException();
+        }
+
+        appointment.setStatus(requestedStatus);
+        return toResponse(appointmentRepository.saveAndFlush(appointment));
+    }
+
+    @Transactional
+    public int reconcileOverdueAppointments(Instant now) {
+        Instant cutoff = noShowCutoff(now);
+        return appointmentRepository.markOverdueAsNoShow(
+                AppointmentStatus.AGENDADO,
+                AppointmentStatus.FALTA,
+                cutoff);
+    }
+
+    @Transactional
+    public int reconcileOverdueAppointments(UUID clinicId, Instant now) {
+        Instant cutoff = noShowCutoff(now);
+        return appointmentRepository.markClinicOverdueAsNoShow(
+                clinicId,
+                AppointmentStatus.AGENDADO,
+                AppointmentStatus.FALTA,
+                cutoff);
+    }
+
+    @Transactional(readOnly = true)
+    public long countOverdueAppointments(Instant now) {
+        return appointmentRepository.countByStatusAndStartsAtLessThanEqual(
+                AppointmentStatus.AGENDADO,
+                noShowCutoff(now));
+    }
+
+    private void markAsNoShowIfOverdue(Appointment appointment, Instant now) {
+        if (isNoShowDue(appointment, now)) {
+            appointment.setStatus(AppointmentStatus.FALTA);
+            appointmentRepository.saveAndFlush(appointment);
+        }
+    }
+
+    private boolean isNoShowDue(Appointment appointment, Instant now) {
+        return appointment.getStatus() == AppointmentStatus.AGENDADO
+                && appointment.getStartsAt() != null
+                && !appointment.getStartsAt().plus(NO_SHOW_GRACE_PERIOD).isAfter(now);
+    }
+
+    private Instant noShowCutoff(Instant now) {
+        return now.minus(NO_SHOW_GRACE_PERIOD);
+    }
+
+    private DomainException invalidStatusTransition() {
+        return new DomainException(
+                "APPOINTMENT_STATUS_TRANSITION_INVALID",
+                "O agendamento não pode assumir o status solicitado.",
+                HttpStatus.CONFLICT);
     }
 
     private Professional resolveProfessional(

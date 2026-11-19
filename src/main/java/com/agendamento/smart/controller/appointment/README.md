@@ -2,7 +2,7 @@
 
 ## Objetivo do módulo
 
-Expor criação, listagem por intervalo e consulta unitária de agendamentos.
+Expor criação, listagem por intervalo, consulta unitária e transições iniciais de status dos agendamentos.
 
 ## Responsabilidades principais
 
@@ -15,6 +15,7 @@ Expor criação, listagem por intervalo e consulta unitária de agendamentos.
 - `POST /api/appointments`: cria agendamento.
 - `GET /api/appointments`: lista por clínica e intervalo, com `unitId` opcional.
 - `GET /api/appointments/{id}`: consulta por UUID.
+- `PATCH /api/appointments/{id}/status`: inicia ou cancela um agendamento em `AGENDADO`.
 
 ## Dependências internas e externas
 
@@ -30,11 +31,13 @@ Expor criação, listagem por intervalo e consulta unitária de agendamentos.
 - `AppointmentController.create(AppointmentRequest)`.
 - `AppointmentController.findAll(...)`.
 - `AppointmentController.findById(UUID)`.
+- `AppointmentController.updateStatus(UUID, AppointmentStatusRequest, User)`.
 
 ## Fluxos de entrada
 
 - Criação: JSON -> Bean Validation -> service -> recursos do tenant -> repository -> resposta.
 - Consulta: filtros ou UUID do path -> service -> repository -> resposta.
+- Status: comando limitado -> lock por clínica -> validação de unidade, ciclo de vida e prazo -> repository -> resposta.
 
 ## Arquivos críticos
 
@@ -53,16 +56,17 @@ Expor criação, listagem por intervalo e consulta unitária de agendamentos.
 
 - A API de agenda poderá receber paginação em change própria se o volume exigir.
 - Criação bloqueia, sem exceção, sobreposição do paciente, sobreposição do profissional e capacidade excedida do serviço.
-- `ADMIN` e `BASIC` criam, confirmam, iniciam, concluem, registram falta e remarcam; somente `ADMIN` cancela.
+- `ADMIN` e `BASIC` podem iniciar ou cancelar, desde que tenham acesso à unidade; comandos de conclusão, falta manual e remarcação permanecem fora desta change.
 - Remarcação exige motivo, marca o original como `REMARCADO` e cria um novo agendamento vinculado. Cancelamento exige motivo e pode atingir uma ocorrência ou “esta e as próximas”.
 - Agendamentos não possuem endpoint de exclusão definitiva.
-- Os estados canônicos são `AGENDADO`, `CONFIRMADO`, `EM_ATENDIMENTO`, `CONCLUIDO`, `CANCELADO`, `FALTA` e `REMARCADO`; cada transição registra autor e instante.
+- O enum persistido nesta API é `AGENDADO`, `ATENDENDO`, `CANCELADO`, `FALTA` e `FINALIZADO`; a ampliação para o workflow canônico completo permanece fora desta change.
 
 ## Observações técnicas e débitos identificados
 
 - As três rotas exigem autenticação; o service restringe os recursos ao tenant do usuário autenticado.
 - A regra específica para `GET /api/appointments` cobre a listagem; a consulta por ID permanece autenticada pela regra padrão.
-- Não existem atualização, cancelamento ou transição de status.
+- A atualização aceita somente `ATENDENDO` e `CANCELADO` a partir de `AGENDADO`.
+- `FALTA` é atribuído automaticamente após dez minutos do início sem `ATENDENDO`.
 - A criação responde HTTP 201.
 - Ausências e conflitos usam o contrato central de erros de domínio.
 - A matriz completa de status está em `docs/API_APPOINTMENTS.md` na raiz do projeto.
