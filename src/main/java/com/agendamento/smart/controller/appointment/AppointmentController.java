@@ -2,6 +2,7 @@ package com.agendamento.smart.controller.appointment;
 
 import com.agendamento.smart.dtos.appointment.AppointmentRequest;
 import com.agendamento.smart.dtos.appointment.AppointmentResponse;
+import com.agendamento.smart.dtos.appointment.AppointmentStatusRequest;
 import com.agendamento.smart.dtos.catalog.CatalogResponse;
 import com.agendamento.smart.model.user.User;
 import com.agendamento.smart.service.appointment.AppointmentService;
@@ -12,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -51,5 +53,13 @@ public class AppointmentController {
             @PathVariable UUID id,
             @AuthenticationPrincipal User user) {
         return ResponseEntity.ok(service.findById(id, user));
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<AppointmentResponse> updateStatus(
+            @PathVariable UUID id,
+            @Valid @RequestBody AppointmentStatusRequest request,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(service.updateStatus(id, request.status(), user));
     }
 }

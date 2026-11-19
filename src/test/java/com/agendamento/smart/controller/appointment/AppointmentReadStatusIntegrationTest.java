@@ -9,6 +9,8 @@ import com.agendamento.smart.dtos.clinic.ClinicRegistrationResponse;
 import com.agendamento.smart.infra.security.TokenService;
 import com.agendamento.smart.model.clinic.Clinic;
 import com.agendamento.smart.model.clinic.StatusClinic;
+import com.agendamento.smart.model.appointment.Appointment;
+import com.agendamento.smart.model.appointment.AppointmentStatus;
 import com.agendamento.smart.model.patient.Patient;
 import com.agendamento.smart.model.serviceoffering.ServiceOffering;
 import com.agendamento.smart.model.unit.ClinicUnit;
@@ -16,35 +18,51 @@ import com.agendamento.smart.model.unit.StatusUnit;
 import com.agendamento.smart.model.unit.TypeUnit;
 import com.agendamento.smart.model.user.User;
 import com.agendamento.smart.repository.ClinicRepository;
+import com.agendamento.smart.repository.AppointmentRepository;
 import com.agendamento.smart.repository.PatientRepository;
 import com.agendamento.smart.repository.ServiceOfferingRepository;
 import com.agendamento.smart.repository.UnitRepository;
 import com.agendamento.smart.repository.UserRepository;
 import com.agendamento.smart.service.ClinicOnboardingService;
 import com.agendamento.smart.service.appointment.AppointmentService;
+import com.agendamento.smart.service.appointment.AppointmentStatusMonitor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.Clock;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@Import(AppointmentReadStatusIntegrationTest.FixedClockConfiguration.class)
+@ExtendWith(OutputCaptureExtension.class)
 class AppointmentReadStatusIntegrationTest extends PostgresIntegrationTestSupport {
 
     private static final String ADMIN_PASSWORD = "Administrative@123";
+    private static final Instant TEST_NOW = Instant.now().truncatedTo(ChronoUnit.SECONDS);
 
     @Autowired
     private MockMvc mockMvc;
@@ -59,7 +77,13 @@ class AppointmentReadStatusIntegrationTest extends PostgresIntegrationTestSuppor
     private AppointmentService appointmentService;
 
     @Autowired
+    private AppointmentStatusMonitor appointmentStatusMonitor;
+
+    @Autowired
     private ClinicRepository clinicRepository;
+
+    @Autowired
+    private AppointmentRepository appointmentRepository;
 
     @Autowired
     private UnitRepository unitRepository;
@@ -241,6 +265,143 @@ class AppointmentReadStatusIntegrationTest extends PostgresIntegrationTestSuppor
                 .andExpect(jsonPath("$.content").isEmpty());
     }
 
+    @Test
+    void allowsStartingAnAppointmentAndRejectsSecondTransition() throws Exception {
+        Context context = context("status-transition");
+        AppointmentResponse appointment = create(context, context.matrix(), context.patient(), futureBase());
+
+        mockMvc.perform(patch("/api/appointments/{id}/status", appointment.id())
+                        .header("Authorization", bearer(context.admin()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"ATENDENDO\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ATENDENDO"));
+
+        mockMvc.perform(patch("/api/appointments/{id}/status", appointment.id())
+                        .header("Authorization", bearer(context.admin()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"CANCELADO\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("APPOINTMENT_STATUS_TRANSITION_INVALID"));
+
+        AppointmentResponse cancellation = create(
+                context,
+                context.matrix(),
+                context.patient(),
+                futureBase().plus(1, ChronoUnit.HOURS));
+        mockMvc.perform(patch("/api/appointments/{id}/status", cancellation.id())
+                        .header("Authorization", bearer(context.admin()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"CANCELADO\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELADO"));
+    }
+
+    @Test
+    void doesNotExposeAnotherClinicAppointmentThroughStatusEndpoint() throws Exception {
+        Context owner = context("status-owner");
+        Context other = context("status-other");
+        AppointmentResponse appointment = create(owner, owner.matrix(), owner.patient(), futureBase());
+
+        mockMvc.perform(patch("/api/appointments/{id}/status", appointment.id())
+                        .header("Authorization", bearer(other.admin()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"ATENDENDO\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TENANT_RESOURCE_NOT_FOUND"));
+    }
+
+    @Test
+    void marksOverdueAppointmentAsNoShowOnReadAndRejectsLateManualTransition() throws Exception {
+        Context context = context("status-no-show");
+        AppointmentResponse appointment = create(context, context.matrix(), context.patient(), futureBase());
+        Appointment stored = appointmentRepository.findById(appointment.id()).orElseThrow();
+        stored.setStartsAt(Instant.now().minus(11, ChronoUnit.MINUTES));
+        appointmentRepository.saveAndFlush(stored);
+
+        mockMvc.perform(patch("/api/appointments/{id}/status", appointment.id())
+                        .header("Authorization", bearer(context.admin()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"ATENDENDO\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("APPOINTMENT_NO_SHOW_DEADLINE"));
+
+        mockMvc.perform(get("/api/appointments/{id}", appointment.id())
+                        .header("Authorization", bearer(context.admin())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(AppointmentStatus.FALTA.name()));
+    }
+
+    @Test
+    void rejectsAutomaticStatusAsManualCommandAndKeepsAppointmentWaiting() throws Exception {
+        Context context = context("status-command-validation");
+        AppointmentResponse appointment = create(context, context.matrix(), context.patient(), futureBase());
+
+        mockMvc.perform(patch("/api/appointments/{id}/status", appointment.id())
+                        .header("Authorization", bearer(context.admin()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"FALTA\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("APPOINTMENT_STATUS_TRANSITION_INVALID"));
+
+        org.assertj.core.api.Assertions.assertThat(appointmentRepository.findById(appointment.id()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.AGENDADO);
+    }
+
+    @Test
+    void concurrentMonitorRunsAreIdempotent() {
+        Context context = context("status-monitor");
+        AppointmentResponse appointment = create(context, context.matrix(), context.patient(), futureBase());
+        Appointment stored = appointmentRepository.findById(appointment.id()).orElseThrow();
+        stored.setStartsAt(Instant.now().minus(11, ChronoUnit.MINUTES));
+        appointmentRepository.saveAndFlush(stored);
+
+        CompletableFuture.allOf(
+                CompletableFuture.runAsync(appointmentStatusMonitor::reconcileOverdueAppointments),
+                CompletableFuture.runAsync(appointmentStatusMonitor::reconcileOverdueAppointments))
+                .join();
+
+        org.assertj.core.api.Assertions.assertThat(appointmentRepository.findById(appointment.id()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.FALTA);
+    }
+
+    @Test
+    void monitorWritesOperationalLogWithoutAppointmentData(CapturedOutput output) {
+        Context context = context("status-monitor-log");
+        AppointmentResponse appointment = create(context, context.matrix(), context.patient(), futureBase());
+        Appointment stored = appointmentRepository.findById(appointment.id()).orElseThrow();
+        stored.setStartsAt(TEST_NOW.minus(11, ChronoUnit.MINUTES));
+        appointmentRepository.saveAndFlush(stored);
+
+        appointmentStatusMonitor.reconcileOverdueAppointments();
+
+        org.assertj.core.api.Assertions.assertThat(output.getOut())
+                .contains("appointment_status_monitor")
+                .contains("candidates=")
+                .contains("updated=")
+                .doesNotContain(appointment.id().toString());
+    }
+
+    @Test
+    void appliesNoShowAtTheTenMinuteBoundaryOnly() {
+        Context context = context("status-boundary");
+        AppointmentResponse appointment = create(context, context.matrix(), context.patient(), futureBase());
+        Appointment stored = appointmentRepository.findById(appointment.id()).orElseThrow();
+
+        stored.setStartsAt(TEST_NOW.minus(10, ChronoUnit.MINUTES).plusSeconds(1));
+        appointmentRepository.saveAndFlush(stored);
+        appointmentService.reconcileOverdueAppointments(TEST_NOW);
+        org.assertj.core.api.Assertions.assertThat(appointmentRepository.findById(appointment.id()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.AGENDADO);
+
+        stored = appointmentRepository.findById(appointment.id()).orElseThrow();
+        stored.setStartsAt(TEST_NOW.minus(10, ChronoUnit.MINUTES));
+        appointmentRepository.saveAndFlush(stored);
+        appointmentService.reconcileOverdueAppointments(TEST_NOW);
+        org.assertj.core.api.Assertions.assertThat(appointmentRepository.findById(appointment.id()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.FALTA);
+    }
+
     private org.springframework.test.web.servlet.ResultActions performLogin(Context context) throws Exception {
         AuthenticationDTO request = new AuthenticationDTO(context.admin().getLogin(), ADMIN_PASSWORD);
         return mockMvc.perform(post("/auth/login")
@@ -343,5 +504,15 @@ class AppointmentReadStatusIntegrationTest extends PostgresIntegrationTestSuppor
             Patient patient,
             ServiceOffering service,
             User admin) {
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class FixedClockConfiguration {
+
+        @Bean
+        @Primary
+        Clock appointmentTestClock() {
+            return Clock.fixed(TEST_NOW, ZoneOffset.UTC);
+        }
     }
 }

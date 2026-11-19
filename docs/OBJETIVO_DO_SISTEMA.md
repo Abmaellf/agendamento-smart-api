@@ -130,7 +130,7 @@ ordem crescente. Clínica ou unidade `INATIVO` impede leitura explícita;
 | Usuários | Cadastro posterior restrito a `USER`, perfil profissional opcional, listagem e usuário atual | Atualização, exclusão, convite |
 | Clínicas | Onboarding com MATRIZ/equipe, status e invariantes persistentes | Consulta, atualização, FILIAL e transição de status |
 | Pacientes | Cadastro isolado com vínculos de unidades e listagem paginada legada | Busca por ID, atualização, exclusão e correção da listagem pública |
-| Agendamentos | Criação, consulta por ID, listagem por clínica/unidade, conflitos e capacidade | Alteração, cancelamento, finalização e recorrência |
+| Agendamentos | Criação, consulta por ID, listagem por clínica/unidade, conflitos, capacidade, início/cancelamento e falta automática | Finalização, remarcação e recorrência |
 | Operação | Flyway, build info, Dockerfile/Compose | Health check HTTP, métricas, tracing e documentação OpenAPI |
 
 ## Visão de produto
@@ -140,7 +140,7 @@ agendamentos. A clínica delimita cadastros e agenda; o onboarding cria a MATRIZ
 e a equipe operacional, profissionais pertencem a uma unidade e pacientes
 podem pertencer a várias unidades da mesma clínica.
 
-O enum Java e o check do schema PostgreSQL aceitam `AGENDADO`, `ATENDENDO`, `CANCELADO` e `FINALIZADO`; porém não existem endpoints nem regras de transição. Portanto, o ciclo completo não deve ser tratado como funcionalidade existente.
+O enum Java e o check do schema PostgreSQL aceitam `AGENDADO`, `ATENDENDO`, `CANCELADO`, `FALTA` e `FINALIZADO`. A API já permite iniciar ou cancelar a partir de `AGENDADO` e reconcilia automaticamente `FALTA` dez minutos após o início; finalização e o ciclo completo ainda não devem ser tratados como funcionalidade existente.
 
 O ciclo-alvo confirmado usa `AGENDADO`, `CONFIRMADO`, `EM_ATENDIMENTO`,
 `CONCLUIDO`, `CANCELADO`, `FALTA` e `REMARCADO`, com ações manuais no primeiro

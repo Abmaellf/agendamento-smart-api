@@ -122,6 +122,53 @@ Erros relevantes:
 | `403` | `UNIT_APPOINTMENTS_READ_DISABLED` | filtro explícito para unidade `INATIVO` |
 | `404` | `TENANT_RESOURCE_NOT_FOUND` | unidade pertence a outra clínica ou não existe |
 
+## Alterar status
+
+### `PATCH /api/appointments/{id}/status`
+
+O corpo aceita somente os comandos manuais `ATENDENDO` e `CANCELADO` quando o
+appointment está em `AGENDADO` e pertence à clínica do usuário autenticado.
+Usuários não administradores também precisam estar vinculados à unidade do
+appointment.
+
+```json
+{
+  "status": "ATENDENDO"
+}
+```
+
+Em caso de sucesso, a API responde `200 OK` com o `AppointmentResponse`
+atualizado. O comando não aceita `FALTA`, pois esse estado é reservado à
+reconciliação automática.
+
+| HTTP | `code` | Situação |
+|---|---|---|
+| `400` | `VALIDATION_ERROR` | corpo ausente, status nulo ou status não aceito |
+| `404` | `TENANT_RESOURCE_NOT_FOUND` | appointment de outra clínica/unidade autorizada |
+| `409` | `APPOINTMENT_STATUS_TRANSITION_INVALID` | status atual não permite a transição |
+| `409` | `APPOINTMENT_NO_SHOW_DEADLINE` | início/cancelamento após dez minutos do início |
+
+## Falta automática e monitoramento
+
+Um appointment em `AGENDADO` passa a `FALTA` quando `startsAt + 10 minutos`
+for atingido sem confirmação de `ATENDENDO`. A regra usa o instante absoluto
+persistido em `starts_at`; não depende do fuso do processo nem de um timer do
+frontend.
+
+A API executa uma reconciliação periódica configurável, habilitada por padrão,
+com intervalo de 60 segundos (`appointments.status-monitor.fixed-delay-ms`) e
+atraso inicial configurável (`appointments.status-monitor.initial-delay-ms`). As leituras de lista e detalhe também reconciliam
+appointments vencidos antes de montar a resposta, reduzindo a janela entre o
+limite e o estado observado. A atualização é condicional ao status ainda ser
+`AGENDADO`, portanto pode ser repetida em várias instâncias sem reverter
+`ATENDENDO`, `CANCELADO` ou `FINALIZADO`.
+
+Cada rodada registra somente informações operacionais: identificador da rodada,
+instante/duração, quantidade de candidatos, quantidade atualizada e tipo de
+erro. Pacientes, tokens, payloads e identificadores de appointments não entram
+nos logs. Alertas operacionais podem considerar duas janelas consecutivas sem
+rodada concluída ou uma falha registrada.
+
 ## Consultar por ID
 
 ### `GET /api/appointments/{id}`

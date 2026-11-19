@@ -14,7 +14,7 @@ Representar um agendamento de paciente e mapear a lista de patologias entre Java
 ## Funcionalidades existentes
 
 - Entidade `Appointment`.
-- Status Java `AGENDADO`, `ATENDENDO`, `CANCELADO` e `FINALIZADO`.
+- Status Java `AGENDADO`, `ATENDENDO`, `CANCELADO`, `FALTA` e `FINALIZADO`.
 - Mapeamento Hibernate JSON para `List<String>`.
 - `UUID` nativo para IDs e `timestamptz` para `starts_at`, `created_at` e `updated_at`.
 - Atualização de `updatedAt` por `@PreUpdate`.
@@ -47,7 +47,7 @@ Request -> service -> associações de domínio -> entidade -> Hibernate/JPA -> 
 
 - O conceito canônico é `Appointment`: um registro por paciente, vinculado a tenant, unidade, serviço e profissional opcional.
 - O agendamento guarda início com fuso explícito e snapshots de duração e preço; profissional é obrigatório antes de `EM_ATENDIMENTO` ou `CONCLUIDO`.
-- Estados canônicos: `AGENDADO`, `CONFIRMADO`, `EM_ATENDIMENTO`, `CONCLUIDO`, `CANCELADO`, `FALTA` e `REMARCADO`.
+- O workflow canônico completo ainda é evolução futura; nesta API, as transições implementadas são `AGENDADO` -> `ATENDENDO`/`CANCELADO` e `AGENDADO` -> `FALTA` automaticamente após o prazo.
 - Sobreposição do mesmo paciente, sobreposição do mesmo profissional e capacidade excedida do serviço são sempre proibidas.
 - Ocorrências recorrentes são independentes e ligadas a `AppointmentSeries`.
 - Remarcação mantém o original como `REMARCADO`, cria um novo registro vinculado e audita autor, instante e motivo. Cancelamento também é auditável.
@@ -58,6 +58,6 @@ Request -> service -> associações de domínio -> entidade -> Hibernate/JPA -> 
 
 - A evolução de `AppointmentStatus` para todos os estados canônicos exige migration compatível com registros existentes.
 - `appointmentDate` e `hours` podem representar horas diferentes e não há validação.
-- Não existem regras ou comandos de transição de status; conflitos, duração e data futura são validados na criação pelo service.
+- O endpoint de status valida transições manuais e o reconciliador automático trata `FALTA`; conflitos, duração e data futura continuam sendo validados na criação pelo service.
 - Timestamps são inicializados pela aplicação e também possuem defaults na migration; não há uma fonte temporal única declarada.
 - As FKs de `APPOINTMENT` usam exclusão restritiva para preservar o histórico.
