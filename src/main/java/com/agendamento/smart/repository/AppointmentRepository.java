@@ -74,6 +74,22 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
     List<Appointment> findAllByClinicIdAndUnitIdAndStartsAtGreaterThanEqualAndStartsAtLessThanOrderByStartsAtAsc(
             UUID clinicId, UUID unitId, Instant from, Instant to);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select appointment
+            from Appointment appointment
+            where appointment.clinic.id = :clinicId
+              and appointment.unit.id = :unitId
+              and appointment.startsAt >= :from
+              and appointment.startsAt < :to
+            order by appointment.startsAt asc, appointment.id asc
+            """)
+    List<Appointment> findForCurrentHourUpdate(
+            @Param("clinicId") UUID clinicId,
+            @Param("unitId") UUID unitId,
+            @Param("from") Instant from,
+            @Param("to") Instant to);
+
     @Query("""
             select appointment
             from Appointment appointment

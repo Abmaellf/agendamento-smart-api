@@ -16,6 +16,8 @@ Expor criação, listagem por intervalo, consulta unitária e transições inici
 - `GET /api/appointments`: lista por clínica e intervalo, com `unitId` opcional.
 - `GET /api/appointments/{id}`: consulta por UUID.
 - `PATCH /api/appointments/{id}/status`: inicia ou cancela um agendamento em `AGENDADO`.
+- `POST /api/appointments/start-current-hour`: confirma em lote a presença dos
+  agendamentos elegíveis da hora corrente de uma unidade.
 
 ## Dependências internas e externas
 
@@ -38,6 +40,9 @@ Expor criação, listagem por intervalo, consulta unitária e transições inici
 - Criação: JSON -> Bean Validation -> service -> recursos do tenant -> repository -> resposta.
 - Consulta: filtros ou UUID do path -> service -> repository -> resposta.
 - Status: comando limitado -> lock por clínica -> validação de unidade, ciclo de vida e prazo -> repository -> resposta.
+- Presença coletiva: request de unidade/faixa -> validação do tenant e fuso da
+  unidade -> seleção semiaberta com lock -> `AGENDADO`/`FALTA` para
+  `ATENDENDO` -> resposta agregada.
 
 ## Arquivos críticos
 
@@ -66,6 +71,8 @@ Expor criação, listagem por intervalo, consulta unitária e transições inici
 - As três rotas exigem autenticação; o service restringe os recursos ao tenant do usuário autenticado.
 - A regra específica para `GET /api/appointments` cobre a listagem; a consulta por ID permanece autenticada pela regra padrão.
 - A atualização aceita somente `ATENDENDO` e `CANCELADO` a partir de `AGENDADO`.
+- O comando coletivo aceita `AGENDADO` e `FALTA` e não aplica a janela de dez
+  minutos; a confirmação explícita significa que a pessoa está no local.
 - `FALTA` é atribuído automaticamente após dez minutos do início sem `ATENDENDO`.
 - A criação responde HTTP 201.
 - Ausências e conflitos usam o contrato central de erros de domínio.
