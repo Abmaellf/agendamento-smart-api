@@ -122,6 +122,54 @@ Erros relevantes:
 | `403` | `UNIT_APPOINTMENTS_READ_DISABLED` | filtro explícito para unidade `INATIVO` |
 | `404` | `TENANT_RESOURCE_NOT_FOUND` | unidade pertence a outra clínica ou não existe |
 
+## Iniciar appointments da hora corrente em lote
+
+### `POST /api/appointments/start-current-hour`
+
+O comando confirma a presença dos appointments da unidade na hora corrente,
+usando o fuso IANA persistido em `ClinicUnit.timeZone`. O corpo aceita somente
+`unitId` e `hourStart`; `hourStart` deve ser o início da hora local corrente,
+serializado como instante ISO-8601. A faixa consultada é semiaberta
+`[hourStart, hourStart + 1h)`.
+
+```json
+{
+  "unitId": "22222222-2222-4222-8222-222222222222",
+  "hourStart": "2026-11-20T14:00:00Z"
+}
+```
+
+Somente `AGENDADO` e `FALTA` são elegíveis e passam a `ATENDENDO`. A inclusão
+de `FALTA` representa confirmação explícita de que a pessoa está no local;
+`CANCELADO`, `FINALIZADO` e demais estados são preservados. A operação valida
+a clínica do usuário, o vínculo da unidade, o escopo do usuário não
+administrador, o status legível de clínica/unidade e os mesmos conflitos de
+paciente, profissional e capacidade aplicados à criação. A seleção é
+bloqueada por unidade/faixa e a transação só confirma todos os elegíveis se a
+validação terminar sem conflito.
+
+Resposta `200 OK`:
+
+```json
+{
+  "unitId": "22222222-2222-4222-8222-222222222222",
+  "timeZone": "America/Cuiaba",
+  "hourStart": "2026-11-20T14:00:00Z",
+  "hourEnd": "2026-11-20T15:00:00Z",
+  "evaluatedAt": "2026-11-20T14:32:00Z",
+  "targetStatus": "ATENDENDO",
+  "matchedCount": 4,
+  "updatedCount": 3,
+  "skippedCount": 1,
+  "skippedByStatus": { "CANCELADO": 1 }
+}
+```
+
+Erros relevantes: `400/INVALID_APPOINTMENT_HOUR`, `403` para clínica ou
+unidade sem leitura, `404/TENANT_RESOURCE_NOT_FOUND` para escopo inválido,
+`409/APPOINTMENT_HOUR_NOT_CURRENT` para faixa expirada/futura e conflitos de
+reativação, e `422/UNIT_TIME_ZONE_INVALID` para fuso inválido.
+
 ## Alterar status
 
 ### `PATCH /api/appointments/{id}/status`

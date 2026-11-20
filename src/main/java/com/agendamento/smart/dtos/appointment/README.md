@@ -13,6 +13,9 @@ Definir os contratos de criação e leitura de agendamentos.
 
 - `AppointmentRequest` exige `patientId`, `unitId`, `serviceId`, `startsAt`, `durationMinutes` e `price`; `professionalId` é opcional.
 - `AppointmentResponse` representa o agendamento persistido.
+- `StartCurrentHourRequest` recebe somente `unitId` e `hourStart`.
+- `StartCurrentHourResponse` devolve a faixa avaliada, o instante de avaliação,
+  o status-alvo e as contagens de correspondidos, atualizados e preservados.
 
 ## Dependências internas e externas
 
@@ -27,6 +30,7 @@ Definir os contratos de criação e leitura de agendamentos.
 
 - Corpo de `POST /api/appointments`.
 - Corpo de resposta de criação e `GET /api/appointments` ou `GET /api/appointments/{id}`.
+- Corpo e resposta de `POST /api/appointments/start-current-hour`.
 
 ## Fluxos de entrada
 

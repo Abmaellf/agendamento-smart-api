@@ -5,6 +5,8 @@ import com.agendamento.smart.controller.appointment.AppointmentNoShowDeadlineExc
 import com.agendamento.smart.dtos.appointment.AppointmentRequest;
 import com.agendamento.smart.dtos.appointment.AppointmentResponse;
 import com.agendamento.smart.dtos.appointment.AppointmentResponse.ReferenceResponse;
+import com.agendamento.smart.dtos.appointment.StartCurrentHourRequest;
+import com.agendamento.smart.dtos.appointment.StartCurrentHourResponse;
 import com.agendamento.smart.model.appointment.Appointment;
 import com.agendamento.smart.model.appointment.AppointmentStatus;
 import com.agendamento.smart.model.clinic.Clinic;
@@ -34,9 +36,15 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.DateTimeException;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -242,6 +250,145 @@ public class AppointmentService {
 
         appointment.setStatus(requestedStatus);
         return toResponse(appointmentRepository.saveAndFlush(appointment));
+    }
+
+    @Transactional
+    public StartCurrentHourResponse startCurrentHour(StartCurrentHourRequest request, User user) {
+        UUID clinicId = user.getClinic().getId();
+        Clinic clinic = clinicRepository.findByIdForUpdate(clinicId)
+                .orElseThrow(DomainException::tenantResourceNotFound);
+        requireClinicReadable(clinic);
+
+        ClinicUnit unit = unitRepository.findByIdAndClinicId(request.unitId(), clinicId)
+                .orElseThrow(DomainException::tenantResourceNotFound);
+        requireUserUnit(user, unit.getId());
+        requireUnitReadable(unit);
+
+        ZoneId zoneId;
+        try {
+            zoneId = ZoneId.of(unit.getTimeZone());
+        } catch (DateTimeException exception) {
+            throw new DomainException(
+                    "UNIT_TIME_ZONE_INVALID",
+                    "O fuso horário da unidade é inválido.",
+                    HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        Instant evaluatedAt = clock.instant();
+        ZonedDateTime currentHour = evaluatedAt.atZone(zoneId).truncatedTo(ChronoUnit.HOURS);
+        ZonedDateTime requestedHour = request.hourStart().atZone(zoneId);
+        if (requestedHour.getMinute() != 0
+                || requestedHour.getSecond() != 0
+                || requestedHour.getNano() != 0) {
+            throw new DomainException(
+                    "INVALID_APPOINTMENT_HOUR",
+                    "A hora deve representar o início de uma hora local.",
+                    HttpStatus.BAD_REQUEST);
+        }
+        if (!requestedHour.toLocalDate().equals(currentHour.toLocalDate())
+                || requestedHour.getHour() != currentHour.getHour()) {
+            throw new DomainException(
+                    "APPOINTMENT_HOUR_NOT_CURRENT",
+                    "A faixa solicitada não é a hora corrente da unidade.",
+                    HttpStatus.CONFLICT);
+        }
+
+        Instant hourStart = currentHour.toInstant();
+        Instant hourEnd = currentHour.plusHours(1).toInstant();
+        List<Appointment> matched = appointmentRepository.findForCurrentHourUpdate(
+                clinicId, unit.getId(), hourStart, hourEnd);
+        Instant postLockEvaluatedAt = clock.instant();
+        ZonedDateTime postLockCurrentHour = postLockEvaluatedAt.atZone(zoneId)
+                .truncatedTo(ChronoUnit.HOURS);
+        if (!postLockCurrentHour.toLocalDate().equals(currentHour.toLocalDate())
+                || postLockCurrentHour.getHour() != currentHour.getHour()) {
+            throw new DomainException(
+                    "APPOINTMENT_HOUR_NOT_CURRENT",
+                    "A faixa solicitada deixou de ser a hora corrente da unidade.",
+                    HttpStatus.CONFLICT);
+        }
+        evaluatedAt = postLockEvaluatedAt;
+        Map<AppointmentStatus, Integer> skippedByStatus = new LinkedHashMap<>();
+        skippedByStatus.put(AppointmentStatus.ATENDENDO, 0);
+        skippedByStatus.put(AppointmentStatus.CANCELADO, 0);
+        skippedByStatus.put(AppointmentStatus.FINALIZADO, 0);
+        List<Appointment> eligible = matched.stream()
+                .filter(appointment -> appointment.getStatus() == AppointmentStatus.AGENDADO
+                        || appointment.getStatus() == AppointmentStatus.FALTA)
+                .toList();
+
+        validateCollectiveConflicts(clinicId, eligible);
+
+        for (Appointment appointment : eligible) {
+            appointment.setStatus(AppointmentStatus.ATENDENDO);
+        }
+        if (!eligible.isEmpty()) {
+            appointmentRepository.saveAllAndFlush(eligible);
+        }
+        matched.stream()
+                .filter(appointment -> !eligible.contains(appointment))
+                .forEach(appointment -> skippedByStatus.merge(
+                        appointment.getStatus(), 1, Integer::sum));
+
+        return new StartCurrentHourResponse(
+                unit.getId(),
+                unit.getTimeZone(),
+                hourStart,
+                hourEnd,
+                evaluatedAt,
+                AppointmentStatus.ATENDENDO,
+                matched.size(),
+                eligible.size(),
+                matched.size() - eligible.size(),
+                skippedByStatus);
+    }
+
+    private void validateCollectiveConflicts(UUID clinicId, List<Appointment> eligible) {
+        if (eligible.isEmpty()) return;
+        List<Appointment> all = appointmentRepository.findAllByClinicIdAndStartsAtIsNotNull(clinicId);
+        List<Appointment> projectedActive = new ArrayList<>(all.stream()
+                .filter(appointment -> isActive(appointment) || eligible.contains(appointment))
+                .toList());
+
+        for (Appointment candidate : eligible) {
+            Instant candidateEnd = candidate.getStartsAt()
+                    .plusSeconds(candidate.getDurationMinutes() * 60L);
+            for (Appointment existing : projectedActive) {
+                if (existing.getId().equals(candidate.getId()) || !overlaps(existing, candidate.getStartsAt(), candidateEnd)) {
+                    continue;
+                }
+                if (existing.getPatient().getId().equals(candidate.getPatient().getId())) {
+                    throw new DomainException(
+                            "PATIENT_APPOINTMENT_CONFLICT",
+                            "O paciente já possui outro agendamento no intervalo.",
+                            HttpStatus.CONFLICT);
+                }
+                boolean individualService = candidate.getService() != null
+                        && "Atendimento individual".equalsIgnoreCase(candidate.getService().getName());
+                if (individualService && candidate.getProfessional() != null
+                        && existing.getProfessional() != null
+                        && existing.getProfessional().getId().equals(candidate.getProfessional().getId())) {
+                    throw new DomainException(
+                            "PROFESSIONAL_APPOINTMENT_CONFLICT",
+                            "O profissional já possui outro agendamento no intervalo.",
+                            HttpStatus.CONFLICT);
+                }
+            }
+
+            if (candidate.getService() != null) {
+                long occupancy = projectedActive.stream()
+                        .filter(existing -> existing.getService() != null
+                                && existing.getService().getId().equals(candidate.getService().getId())
+                                && overlaps(existing, candidate.getStartsAt(), candidateEnd))
+                        .count();
+                if (occupancy > candidate.getService().getCapacity()) {
+                    throw new DomainException(
+                            "SERVICE_CAPACITY_EXCEEDED",
+                            "A capacidade do serviço está esgotada.",
+                            HttpStatus.CONFLICT);
+                }
+            }
+        }
     }
 
     @Transactional

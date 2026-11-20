@@ -16,6 +16,8 @@ Orquestrar criação e consulta de agendamentos.
 - `create(AppointmentRequest)`.
 - `findAll(User, UUID, Instant, Instant)`.
 - `findById(UUID)`.
+- `startCurrentHour(StartCurrentHourRequest, User)` confirma a presença dos
+  agendamentos elegíveis na faixa temporal da unidade.
 
 ## Dependências internas e externas
 
@@ -31,6 +33,7 @@ Orquestrar criação e consulta de agendamentos.
 - `POST /api/appointments` chama `create`.
 - `GET /api/appointments` chama `findAll`.
 - `GET /api/appointments/{id}` chama `findById`.
+- `POST /api/appointments/start-current-hour` chama `startCurrentHour`.
 
 ## Fluxos de entrada
 
@@ -45,6 +48,10 @@ Orquestrar criação e consulta de agendamentos.
 - Listagem sem unidade exclui no banco unidades `INATIVO`; filtro explícito para uma delas responde 403.
 - A clínica é validada antes da unidade e sempre vem do usuário autenticado.
 - `unitId` ausente seleciona a clínica; presente preserva a consulta compatível por unidade.
+- A ação coletiva usa o fuso IANA persistido na unidade e a faixa semiaberta da
+  hora corrente; a seleção e a validação são feitas dentro da transação sob
+  lock. O conjunto é revalidado depois da espera pelo lock, e qualquer falha
+  impede sucesso parcial.
 
 ## Arquivos críticos
 

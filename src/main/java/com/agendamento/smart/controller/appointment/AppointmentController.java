@@ -3,6 +3,8 @@ package com.agendamento.smart.controller.appointment;
 import com.agendamento.smart.dtos.appointment.AppointmentRequest;
 import com.agendamento.smart.dtos.appointment.AppointmentResponse;
 import com.agendamento.smart.dtos.appointment.AppointmentStatusRequest;
+import com.agendamento.smart.dtos.appointment.StartCurrentHourRequest;
+import com.agendamento.smart.dtos.appointment.StartCurrentHourResponse;
 import com.agendamento.smart.dtos.catalog.CatalogResponse;
 import com.agendamento.smart.model.user.User;
 import com.agendamento.smart.service.appointment.AppointmentService;
@@ -46,6 +48,13 @@ public class AppointmentController {
             @RequestParam Instant from,
             @RequestParam Instant to) {
         return new CatalogResponse<>(service.findAll(user, unitId, from, to));
+    }
+
+    @PostMapping("/start-current-hour")
+    public ResponseEntity<StartCurrentHourResponse> startCurrentHour(
+            @Valid @RequestBody StartCurrentHourRequest request,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(service.startCurrentHour(request, user));
     }
 
     @GetMapping("/{id}")
