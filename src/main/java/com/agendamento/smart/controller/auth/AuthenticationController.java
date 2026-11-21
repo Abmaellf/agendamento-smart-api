@@ -29,7 +29,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping("auth")
 public class AuthenticationController {
-
+    @Value("${api.security.cookie.same-site:Lax}")
+    String jwtCookieSameSite;
     /* Esse serviço abaixo esta injetado na classe SecurityConfiguration como @Bean*/
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
@@ -69,7 +70,7 @@ public class AuthenticationController {
                 .secure(jwtCookieSecure)
                 .path("/")
                 .maxAge(Duration.ofHours(1)) // tempo de expiração
-                .sameSite("Lax")
+                .sameSite(jwtCookieSameSite)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         User user = (User) userRepository.findByLogin(data.login());
