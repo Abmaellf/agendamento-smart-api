@@ -20,8 +20,7 @@ estes itens antes do *go-live* público:
 
 - remova o `.env` do versionamento, pois ele ainda está rastreado pelo Git,
   e rotacione todo segredo que já tenha sido commitado;
-- substitua `bitnami/postgresql:latest` por uma tag imutável ou digest já
-  homologado; a tag `latest` pode trocar inclusive a versão principal do banco;
+- mantenha `postgres:18` ou substitua-o por uma tag patch/digest homologado;
 - disponibilize a API somente por HTTPS, atrás de um proxy reverso; publique
   apenas `80` e `443` e não exponha `5432` ou `8080` diretamente;
 - configure `JWT_COOKIE_SECURE=true` para emitir o cookie JWT com `Secure` em
@@ -114,9 +113,11 @@ agenda-compose() {
     -u AGENDA_API_BIND_ADDRESS \
     -u AGENDA_API_PORT \
     -u APP_VERSION \
+    -u API_DOMAIN \
+    -u ACME_EMAIL \
     docker compose \
       --project-directory "$AGENDA_APP_DIR" \
-      --file "$AGENDA_APP_DIR/docker-compose.yml" \
+      --file "$AGENDA_APP_DIR/compose.production.yml" \
       --env-file "$AGENDA_ENV_FILE" \
       "$@"
 }
@@ -179,7 +180,7 @@ pertencentes ao `root`.
 Antes do primeiro deploy, substitua no `docker-compose.yml`:
 
 ```yaml
-image: bitnami/postgresql:latest
+image: postgres:18
 ```
 
 por uma tag patch ou digest imutável que tenha sido testado com um banco
@@ -225,14 +226,14 @@ SPRING_PROFILES_ACTIVE=prod
 AGENDA_DB_NAME=agendamento_smart
 AGENDA_DB_USER=agenda_prod
 AGENDA_DB_PASSWORD=<senha-hexadecimal-aleatoria>
-AGENDA_DB_BIND_ADDRESS=127.0.0.1
-AGENDA_DB_PORT=5432
 
 JWT_SECRET=<segredo-hexadecimal-aleatorio-e-exclusivo>
 JWT_COOKIE_SECURE=true
-AGENDA_API_BIND_ADDRESS=127.0.0.1
-AGENDA_API_PORT=8080
 APP_VERSION=<versao-ou-sha-imutavel>
+
+# Domínio público resolvendo para este servidor e e-mail para ACME.
+API_DOMAIN=api.seu-dominio.com
+ACME_EMAIL=ops@seu-dominio.com
 ```
 
 Gere valores independentes sem reutilizar segredos de teste ou homologação:
@@ -252,12 +253,15 @@ Observações importantes:
 - `SPRING_PROFILES_ACTIVE=prod` é obrigatório. O fallback atual do Compose é
   `test`, que também carrega seeds de desenvolvimento;
 - `AGENDA_URL` não deve ser adicionada. O Compose a monta internamente usando
-  `db:5432`, que é o endereço correto na rede dos contêineres;
+  `postgres:5432`, que é o endereço correto na rede dos contêineres;
 - `AGENDA_FLYWAY_LOCATIONS` não precisa ser definida. O profile `prod` já usa
   somente `classpath:db/migration`, sem seeds, e o Compose atual não repassa
   essa variável ao contêiner;
-- mantenha os binds em `127.0.0.1`. O banco não deve ser público e a API deve
-  permanecer privada até existir um proxy HTTPS;
+- `API_DOMAIN` e `ACME_EMAIL` são obrigatórios no `compose.production.yml`; o
+  Caddy usa o domínio para emitir e renovar o certificado;
+- o Compose de produção não usa `AGENDA_API_BIND_ADDRESS`, `AGENDA_API_PORT`,
+  `AGENDA_DB_BIND_ADDRESS` ou `AGENDA_DB_PORT`: API e banco não têm portas
+  publicadas no host;
 - mudar `AGENDA_DB_NAME`, `AGENDA_DB_USER` ou `AGENDA_DB_PASSWORD` depois que o
   volume foi inicializado não migra automaticamente o banco existente.
 
@@ -279,8 +283,8 @@ test -r "$AGENDA_ENV_FILE"
     && test "${JWT_SECRET:-}" != "" \
     && test "${JWT_COOKIE_SECURE:-}" = "true" \
     && test "${APP_VERSION:-}" != "" \
-    && test "${AGENDA_API_BIND_ADDRESS:-}" = "127.0.0.1" \
-    && test "${AGENDA_DB_BIND_ADDRESS:-}" = "127.0.0.1" \
+    && test "${API_DOMAIN:-}" != "" \
+    && test "${ACME_EMAIL:-}" != "" \
     && test "${AGENDA_DB_PASSWORD:-}" != "agenda-local-password" \
     && test "${APP_VERSION:-}" != "local" \
     && test "${#AGENDA_DB_PASSWORD}" -ge 32 \
@@ -307,20 +311,21 @@ agenda-compose config --quiet
 agenda-compose config --services
 ```
 
-O segundo comando deve listar `api` e `db`. O primeiro não deve produzir erro.
+O segundo comando deve listar `api`, `postgres` e `proxy`. O primeiro não deve
+produzir erro.
 Não use valores default em produção, mesmo que o Compose permita.
 
 ## 6. Fazer o primeiro deploy
 
 O build ocorre dentro do Docker. Ele baixa as dependências com Maven, executa
 `mvn clean verify` usando JDK 21 e cria uma imagem final com JRE 21. Não execute
-`java`, `mvn` ou `./mvnw` no host para este deploy.
-Como o repositório ainda não possui testes em `src/test`, essa etapa comprova
-build e empacotamento, mas não substitui testes de regressão ou homologação.
+`java`, `mvn` ou `./mvnw` no host para este deploy. A suíte em `src/test` deve ser
+executada em ambiente com Docker disponível antes da homologação; isso não
+substitui o smoke test externo do domínio HTTPS.
 
 ```bash
 cd "$AGENDA_APP_DIR"
-agenda-compose pull db
+agenda-compose pull postgres
 agenda-compose build --pull api
 agenda-compose up -d --wait
 agenda-compose ps
@@ -334,7 +339,7 @@ interrompa o processo durante as migrations.
 Primeiro, examine os logs sem mantê-los abertos indefinidamente:
 
 ```bash
-agenda-compose logs --tail=200 db
+agenda-compose logs --tail=200 postgres
 agenda-compose logs --tail=300 api
 ```
 
@@ -344,8 +349,8 @@ do Hibernate ou resolução de `JWT_SECRET`.
 Consulte o histórico do Flyway diretamente no banco:
 
 ```bash
-agenda-compose exec -T db sh -c \
-  'PGPASSWORD="$POSTGRESQL_PASSWORD" psql --host=127.0.0.1 --username="$POSTGRESQL_USERNAME" --dbname="$POSTGRESQL_DATABASE" --command="SELECT installed_rank, version, description, success FROM flyway_schema_history ORDER BY installed_rank;"'
+agenda-compose exec -T postgres sh -c \
+  'PGPASSWORD="$POSTGRES_PASSWORD" psql --host=127.0.0.1 --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" --command="SELECT installed_rank, version, description, success FROM flyway_schema_history ORDER BY installed_rank;"'
 ```
 
 Todas as linhas devem ter `success` igual a `t`. Por fim, faça um teste HTTP
@@ -429,11 +434,11 @@ BACKUP_FILE="$BACKUP_DIR/agendamento-$(date -u +%Y%m%dT%H%M%SZ).dump"
 BACKUP_TMP="${BACKUP_FILE}.tmp"
 
 install -d -m 700 "$BACKUP_DIR"
-if agenda-compose exec -T db sh -c \
-  'PGPASSWORD="$POSTGRESQL_PASSWORD" pg_dump --host=127.0.0.1 --username="$POSTGRESQL_USERNAME" --dbname="$POSTGRESQL_DATABASE" --format=custom --no-owner --no-acl' \
+if agenda-compose exec -T postgres sh -c \
+  'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump --host=127.0.0.1 --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" --format=custom --no-owner --no-acl' \
   > "$BACKUP_TMP" \
   && test -s "$BACKUP_TMP" \
-  && agenda-compose exec -T db pg_restore --list < "$BACKUP_TMP" >/dev/null; then
+  && agenda-compose exec -T postgres pg_restore --list < "$BACKUP_TMP" >/dev/null; then
   chmod 600 "$BACKUP_TMP"
   mv "$BACKUP_TMP" "$BACKUP_FILE"
   echo "Backup criado e estrutura validada: $BACKUP_FILE"
@@ -510,28 +515,51 @@ imagem anterior nem o backup durante a janela de validação.
 
 ## 12. Publicação HTTPS
 
-O repositório ainda não inclui proxy reverso nem certificados TLS. Para manter
-toda a aplicação em Docker, adicione ao Compose um proxy como Caddy, Nginx ou
-Traefik, ligado à mesma rede da API. O proxy deve:
+O repositório entrega `compose.production.yml` e `Caddyfile`. O Compose de
+produção mantém `api` e `postgres` sem portas publicadas, conecta o proxy à
+rede `edge` e conecta a API às redes `edge` e `backend`. Somente o proxy publica
+80 e 443; certificados e estado do Caddy ficam nos volumes `caddy_data` e
+`caddy_config`.
 
-- publicar somente `80:80` e `443:443`;
-- encaminhar internamente para `api:8080`;
-- armazenar certificados em volume persistente;
-- redirecionar HTTP para HTTPS;
-- definir limites de requisição e cabeçalhos de proxy apropriados;
-- possuir tag/digest fixo e rotação de logs.
+Antes de subir, crie um registro DNS `A` (e `AAAA` somente se IPv6 estiver
+configurado) para `API_DOMAIN`, apontando para o servidor. Libere TCP 80/443 no
+firewall do provedor e no UFW; não libere 8080 ou 5432.
 
-Nesse desenho, remova a publicação de porta do serviço `api` e a publicação
-de porta do serviço `db`; ambos ficam acessíveis apenas pela rede Docker. Ajuste
-DNS, CORS e o cookie seguro para o domínio real antes de liberar o tráfego. Não
-troque simplesmente o bind da API para `0.0.0.0`: isso publicaria HTTP sem TLS e
-contornaria a camada de entrada planejada.
+Valide a configuração sem iniciar contêineres:
 
-O repositório ainda não entrega um `compose.production.yml`, um `Caddyfile` ou
-outro artefato de proxy. Portanto, seguindo apenas os arquivos atuais, o
-resultado verificável é um deploy privado em loopback; a publicação pública só
-fica concluída depois que esse proxy Docker for adicionado, testado com o DNS e
-validado com um endpoint de saúde HTTP real.
+```bash
+cd "$AGENDA_APP_DIR"
+docker compose --env-file "$AGENDA_ENV_FILE" \
+  -f compose.production.yml config --quiet
+docker compose --env-file "$AGENDA_ENV_FILE" \
+  -f compose.production.yml config --services
+```
+
+O segundo comando deve listar `api`, `postgres` e `proxy`. Suba a stack e
+confirme que somente o proxy tem portas publicadas:
+
+```bash
+docker compose --env-file "$AGENDA_ENV_FILE" \
+  -f compose.production.yml up -d --build
+docker compose --env-file "$AGENDA_ENV_FILE" \
+  -f compose.production.yml ps
+docker compose --env-file "$AGENDA_ENV_FILE" \
+  -f compose.production.yml logs --tail=200 proxy
+```
+
+O Caddy emite e renova o certificado automaticamente quando DNS e portas estão
+corretos. Não remova `caddy_data` ou `caddy_config` durante atualizações.
+Valide o redirecionamento e o certificado pelo domínio real:
+
+```bash
+curl -I "http://${API_DOMAIN}"
+curl -I "https://${API_DOMAIN}"
+```
+
+A primeira chamada deve redirecionar para HTTPS; a segunda deve completar TLS e
+alcançar a API. O login deve ser testado pela URL HTTPS para confirmar o cookie
+JWT `Secure`/`HttpOnly`. Depois, de uma máquina externa, confirme que 8080 e
+5432 não estão acessíveis.
 
 ## Checklist final
 
@@ -546,7 +574,8 @@ validado com um endpoint de saúde HTTP real.
       corrigidas e revisadas.
 - [ ] Isolamento por clínica, autorização de papéis e bootstrap inicial foram
       implementados e homologados.
-- [ ] Proxy HTTPS e healthcheck da API estão ativos.
+- [ ] Proxy HTTPS está ativo e somente ele publica 80/443; o healthcheck HTTP da
+      API continua sendo uma pendência separada.
 - [ ] Migrations terminaram com sucesso e o smoke test HTTP passou.
 - [ ] Backup externo existe e a restauração foi testada.
 - [ ] Commit implantado, `APP_VERSION` e procedimento de rollback foram

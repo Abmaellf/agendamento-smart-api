@@ -1,0 +1,11 @@
+{
+	email {$ACME_EMAIL}
+}
+
+http://{$API_DOMAIN} {
+	redir https://{$API_DOMAIN}{uri} permanent
+}
+
+https://{$API_DOMAIN} {
+	reverse_proxy api:8080
+}

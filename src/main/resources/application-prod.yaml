@@ -2,12 +2,14 @@ spring:
   config:
     activate:
       on-profile: prod
-
   jpa:
     show-sql: false
 
   flyway:
     locations: ${AGENDA_FLYWAY_LOCATIONS:classpath:db/migration}
+
+server:
+  forward-headers-strategy: framework
 
 api:
   security:
