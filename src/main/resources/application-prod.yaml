@@ -15,6 +15,7 @@ api:
   security:
     cookie:
       secure: ${JWT_COOKIE_SECURE:true}
+      same-site: ${JWT_COOKIE_SAME_SITE:None}
 
 logging:
   level:
