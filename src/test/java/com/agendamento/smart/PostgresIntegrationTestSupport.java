@@ -31,7 +31,6 @@ public abstract class PostgresIntegrationTestSupport {
         registry.add("spring.flyway.locations", () -> "classpath:db/migration");
         registry.add("api.security.token.secret",
                 () -> "integration-test-secret-structure-change-2026");
-        registry.add("api.security.cookie.secure", () -> false);
     }
 
     @Autowired

@@ -38,6 +38,7 @@ Sistema de gestão API - de sistema de agendamentos - destinado a todas as área
 - [Arquitetura do Sistema](docs/ARQUITETURA_DO_SISTEMA.md)
 - [Profiles e build](docs/PROFILES_E_BUILD.md)
 - [Deploy de produção no Ubuntu com Docker](docs/DEPLOY_PRODUCAO_DOCKER_UBUNTU.md)
+- [Guia de deploy e integração com o front-end](docs/GUIA_DEPLOY_E_INTEGRACAO_FRONTEND.md)
 - [Objetivo do sistema](docs/OBJETIVO_DO_SISTEMA.md)
 - [Requisitos confirmados do MVP](docs/REQUISITOS_DO_MVP.md)
 - [Entrevista de descoberta](docs/ENTREVISTA_DE_DESCOBERTA.md)

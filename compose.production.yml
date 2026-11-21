@@ -1,0 +1,101 @@
+name: agendamento-smart
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: agendamento-smart-api:${APP_VERSION:?APP_VERSION must be set}
+    restart: unless-stopped
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: "${SPRING_PROFILES_ACTIVE:?SPRING_PROFILES_ACTIVE must be set to prod}"
+      AGENDA_URL: "jdbc:postgresql://postgres:5432/${AGENDA_DB_NAME:?AGENDA_DB_NAME must be set}"
+      AGENDA_DB_USER: "${AGENDA_DB_USER:?AGENDA_DB_USER must be set}"
+      AGENDA_DB_PASSWORD: "${AGENDA_DB_PASSWORD:?AGENDA_DB_PASSWORD must be set}"
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set}"
+      JWT_COOKIE_SECURE: "${JWT_COOKIE_SECURE:-true}"
+    expose:
+      - "8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+      - edge
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "${AGENDA_DB_USER:?AGENDA_DB_USER must be set}"
+      POSTGRES_PASSWORD: "${AGENDA_DB_PASSWORD:?AGENDA_DB_PASSWORD must be set}"
+      POSTGRES_DB: "${AGENDA_DB_NAME:?AGENDA_DB_NAME must be set}"
+    volumes:
+      - postgresql_data:/var/lib/postgresql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready --host=127.0.0.1 --port=5432 --username="$${POSTGRES_USER}" --dbname="$${POSTGRES_DB}"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  proxy:
+    image: caddy:2.9.1-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      API_DOMAIN: "${API_DOMAIN:?API_DOMAIN must be set}"
+      ACME_EMAIL: "${ACME_EMAIL:?ACME_EMAIL must be set}"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - edge
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  backend:
+    driver: bridge
+  edge:
+    driver: bridge
+
+volumes:
+  postgresql_data:
+  caddy_data:
+  caddy_config:

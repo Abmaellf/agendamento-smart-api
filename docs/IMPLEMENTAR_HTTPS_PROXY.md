@@ -1,8 +1,9 @@
-# Implementar HTTPS com proxy reverso
+# HTTPS com proxy reverso
 
-Este documento descreve como alterar o deploy Docker para disponibilizar a API
-por HTTPS atrás de um proxy reverso. No host, somente o proxy publica as portas
-`80` e `443`; a API e o PostgreSQL ficam acessíveis apenas pela rede Docker.
+Esta configuração já está implementada no `compose.production.yml`. No host,
+somente o proxy publica as portas `80` e `443`; a API e o PostgreSQL ficam
+acessíveis apenas pelas redes Docker internas. O `docker-compose.yml` continua
+reservado ao desenvolvimento/teste por HTTP.
 
 O exemplo usa Caddy para terminar TLS e emitir/renovar certificados. O TLS
 protege o tráfego entre clientes e Caddy. A conexão Caddy → API usa HTTP dentro
@@ -15,11 +16,9 @@ Internet -- HTTP/80 e HTTPS/443 --> Caddy -- HTTP interno --> API:8080
                                                          API -- interno --> PostgreSQL:5432
 ```
 
-Somente Caddy publica portas no host. A API precisa participar da rede do proxy
-e da rede do banco; o PostgreSQL participa apenas da rede do banco. Remover as
-publicações do Compose não altera as portas internas usadas pelos serviços:
-a API continua ouvindo em `8080` e a aplicação continua conectando a
-`postgres:5432`.
+Somente Caddy publica portas no host. A API participa das redes `edge` e
+`backend`; o PostgreSQL participa apenas de `backend`. A API continua ouvindo
+em `8080` e a aplicação continua conectando a `postgres:5432`.
 
 ## 1. Preparar DNS e acesso ao servidor
 
@@ -34,87 +33,31 @@ do servidor. Não crie regras de entrada para `5432` ou `8080`; portas publicada
 pelo Docker também devem ser conferidas, pois podem não seguir as regras do UFW
 como esperado.
 
-## 2. Alterar o `docker-compose.yml`
+## 2. Usar o Compose de produção
 
-No serviço `api`, remova por completo a seção `ports` que usa
-`AGENDA_API_BIND_ADDRESS` e `AGENDA_API_PORT`. Mantenha o serviço na rede
-`backend` e adicione a rede `edge`:
+Não altere o Compose local para publicar TLS. O arquivo `compose.production.yml`
+já define `api`, `postgres` e `proxy`, usa a imagem fixada `caddy:2.9.1-alpine`,
+publica somente 80/443 e mantém `api`/`postgres` sem `ports`. Os volumes
+`postgresql_data`, `caddy_data` e `caddy_config` são nomeados e persistentes.
 
-```yaml
-services:
-  api:
-    # Mantenha as demais opções atuais do serviço.
-    networks:
-      - backend
-      - edge
-```
-
-No serviço `postgres`, remova por completo a seção `ports` que usa
-`AGENDA_DB_BIND_ADDRESS` e `AGENDA_DB_PORT`. Mantenha somente a rede `backend`:
-
-```yaml
-  postgres:
-    # Mantenha as demais opções atuais do serviço.
-    networks:
-      - backend
-```
-
-Adicione o serviço do proxy. Substitua `<versao-fixada>` por uma versão ou
-digest do Caddy previamente homologado; não deixe uma tag flutuante em
-produção.
-
-```yaml
-  proxy:
-    image: caddy:<versao-fixada>
-    restart: unless-stopped
-    depends_on:
-      - api
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    networks:
-      - edge
-    security_opt:
-      - no-new-privileges:true
-```
-
-Declare as duas redes e os volumes persistentes do proxy junto às declarações
-existentes no final do Compose. Preserve o volume PostgreSQL atual:
-
-```yaml
-networks:
-  backend:
-    driver: bridge
-  edge:
-    driver: bridge
-
-volumes:
-  postgresql_data:
-  caddy_data:
-  caddy_config:
-```
-
-O serviço `api` compartilha `edge` com o proxy, permitindo que Caddy encontre
-`api:8080` pelo DNS interno do Compose. O PostgreSQL continua somente em
-`backend`; o proxy não precisa se conectar ao banco. Não adicione `ports` à API
-ou ao banco. A instrução `EXPOSE 8080` no Dockerfile é apenas metadado da imagem
-e não publica a porta no host.
-
-Depois de remover os mapeamentos, retire do `.env` de produção as variáveis
-`AGENDA_API_BIND_ADDRESS`, `AGENDA_API_PORT`, `AGENDA_DB_BIND_ADDRESS` e
-`AGENDA_DB_PORT`, pois não serão mais usadas pelo Compose.
+O arquivo exige `APP_VERSION`, `SPRING_PROFILES_ACTIVE`, credenciais do banco,
+`JWT_SECRET`, `API_DOMAIN` e `ACME_EMAIL`. Mantenha esses valores em arquivo
+fora do clone, com modo 600; nunca grave segredos no Compose ou no Caddyfile.
 
 ## 3. Configurar o Caddy
 
-Crie `Caddyfile` na raiz do repositório, ao lado do `docker-compose.yml`, e
-troque o domínio de exemplo pelo domínio escolhido:
+O `Caddyfile` versionado recebe o domínio e o e-mail por ambiente:
 
 ```caddyfile
-api.exemplo.com {
+{
+    email {$ACME_EMAIL}
+}
+
+http://{$API_DOMAIN} {
+    redir https://{$API_DOMAIN}{uri} permanent
+}
+
+https://{$API_DOMAIN} {
     reverse_proxy api:8080
 }
 ```
@@ -156,25 +99,31 @@ que o CORS de produção permite somente a origem real do front-end.
 Valide a configuração mesclada antes de aplicar:
 
 ```bash
-docker compose config --quiet
-docker compose config --services
+docker compose --env-file /etc/agendamento-smart/agendamento-smart.prod.env \
+  -f compose.production.yml config --quiet
+docker compose --env-file /etc/agendamento-smart/agendamento-smart.prod.env \
+  -f compose.production.yml config --services
 ```
 
 Construa a API e suba os serviços. O proxy deve estar saudável e conseguir
 alcançar a API pela rede `edge`:
 
 ```bash
-docker compose up -d --build
-docker compose ps
-docker compose logs --tail=200 proxy
-docker compose logs --tail=200 api
+docker compose --env-file /etc/agendamento-smart/agendamento-smart.prod.env \
+  -f compose.production.yml up -d --build
+docker compose --env-file /etc/agendamento-smart/agendamento-smart.prod.env \
+  -f compose.production.yml ps
+docker compose --env-file /etc/agendamento-smart/agendamento-smart.prod.env \
+  -f compose.production.yml logs --tail=200 proxy
+docker compose --env-file /etc/agendamento-smart/agendamento-smart.prod.env \
+  -f compose.production.yml logs --tail=200 api
 ```
 
 Verifique a publicação HTTP/HTTPS e o redirecionamento usando o domínio real:
 
 ```bash
-curl -I http://api.exemplo.com
-curl -I https://api.exemplo.com
+curl -I "http://${API_DOMAIN}"
+curl -I "https://${API_DOMAIN}"
 ```
 
 A primeira chamada deve redirecionar para `https://`; a segunda deve completar
@@ -186,8 +135,8 @@ Por fim, teste de uma máquina externa ao servidor que as conexões diretas às
 portas antigas não sejam aceitas:
 
 ```bash
-nc -vz api.exemplo.com 8080
-nc -vz api.exemplo.com 5432
+nc -vz "${API_DOMAIN}" 8080
+nc -vz "${API_DOMAIN}" 5432
 ```
 
 Ambas devem falhar. Na saída de `docker compose ps`, somente `proxy` deve exibir
