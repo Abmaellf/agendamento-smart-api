@@ -2,13 +2,16 @@ package com.agendamento.smart.controller.auth;
 
 import com.agendamento.smart.dtos.AuthenticationDTO;
 import com.agendamento.smart.dtos.LoginResponseDTO;
-import com.agendamento.smart.infra.security.TokenService;
+import com.agendamento.smart.dtos.UserLoginResponse;
 import com.agendamento.smart.model.user.User;
 import com.agendamento.smart.model.user.dto.UserProfileResponse;
 import com.agendamento.smart.model.user.dto.UserListResponse;
 import com.agendamento.smart.repository.UserRepository;
+import com.agendamento.smart.service.AuthSessionService;
 import com.agendamento.smart.service.UserService;
 import com.agendamento.smart.repository.UnitRepository;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,35 +28,46 @@ import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
-@CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
+@CrossOrigin(origins = {
+        "https://agendamentos-smart.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173"
+})
 @RestController
 @RequestMapping("auth")
 public class AuthenticationController {
     @Value("${api.security.cookie.same-site:Lax}")
     String jwtCookieSameSite;
+    @Value("${api.security.cookie.access-name:jwt}")
+    String accessCookieName;
+    @Value("${api.security.cookie.refresh-name:refresh_token}")
+    String refreshCookieName;
+    @Value("${api.security.token.access-ttl:15m}")
+    Duration accessCookieTtl;
+    @Value("${api.security.token.refresh-ttl:30d}")
+    Duration refreshCookieTtl;
     /* Esse serviço abaixo esta injetado na classe SecurityConfiguration como @Bean*/
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
-    private final TokenService tokenService;
     private final UserService userService;
     private final UnitRepository unitRepository;
+    private final AuthSessionService authSessionService;
     private final boolean jwtCookieSecure;
 
     public AuthenticationController(AuthenticationManager authenticationManager,
                                     UserRepository userRepository,
-                                    TokenService tokenService,
                                     UserService userService,
                                     UnitRepository unitRepository,
+                                    AuthSessionService authSessionService,
                                     @Value("${api.security.cookie.secure:false}") boolean jwtCookieSecure) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
-        this.tokenService = tokenService;
         this.userService = userService;
         this.unitRepository = unitRepository;
+        this.authSessionService = authSessionService;
         this.jwtCookieSecure = jwtCookieSecure;
     }
 
-    @CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(@RequestBody @Valid AuthenticationDTO data,
                                                   HttpServletResponse response){
@@ -63,20 +77,35 @@ public class AuthenticationController {
         /*authenticationManager, responsável pela Autenticação e retorna um objeto do tipo Authenticatio*/
         var auth = this.authenticationManager.authenticate(userNamePassword);
 
-        var token = tokenService.generateToken( (User) auth.getPrincipal());
+        User user = (User) auth.getPrincipal();
+        AuthSessionService.SessionTokens tokens = authSessionService.create(user);
+        addSessionCookies(response, tokens);
+        return ResponseEntity.ok(new LoginResponseDTO(new UserLoginResponse(
+                user.getId(),
+                user.getLogin(),
+                user.getRole(),
+                user.getClinic().getId(),
+                user.getClinicUnit().getId())));
+    }
 
-        ResponseCookie cookie = ResponseCookie.from("jwt", token)
-                .httpOnly(true)              // 👈 não acessível via JS
-                .secure(jwtCookieSecure)
-                .path("/")
-                .maxAge(Duration.ofHours(1)) // tempo de expiração
-                .sameSite(jwtCookieSameSite)
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        User user = (User) userRepository.findByLogin(data.login());
-        System.out.println("Login");
-        System.out.println(user.getRole());
-        return ResponseEntity.ok(new LoginResponseDTO(token, user));
+    @PostMapping("/refresh")
+    public ResponseEntity<Void> refresh(HttpServletRequest request, HttpServletResponse response) {
+        String refreshToken = cookieValue(request, refreshCookieName);
+        try {
+            AuthSessionService.SessionTokens tokens = authSessionService.refresh(refreshToken);
+            addSessionCookies(response, tokens);
+            return ResponseEntity.noContent().build();
+        } catch (AuthSessionService.InvalidSessionException exception) {
+            clearSessionCookies(response);
+            return ResponseEntity.status(401).build();
+        }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        authSessionService.logout(cookieValue(request, refreshCookieName));
+        clearSessionCookies(response);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/list")
@@ -111,5 +140,43 @@ public class AuthenticationController {
                 user.getClinic().getId(),
                 user.getClinicUnit() == null ? null : user.getClinicUnit().getId(),
                 user.getClinicUnit() == null ? null : user.getClinicUnit().getName());
+    }
+
+    private void addSessionCookies(
+            HttpServletResponse response,
+            AuthSessionService.SessionTokens tokens) {
+        response.addHeader(HttpHeaders.SET_COOKIE, sessionCookie(
+                accessCookieName, tokens.accessToken(), accessCookieTtl).toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, sessionCookie(
+                refreshCookieName, tokens.refreshToken(), refreshCookieTtl).toString());
+    }
+
+    private void clearSessionCookies(HttpServletResponse response) {
+        response.addHeader(HttpHeaders.SET_COOKIE, sessionCookie(
+                accessCookieName, "", Duration.ZERO).toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, sessionCookie(
+                refreshCookieName, "", Duration.ZERO).toString());
+    }
+
+    private ResponseCookie sessionCookie(String name, String value, Duration maxAge) {
+        return ResponseCookie.from(name, value)
+                .httpOnly(true)
+                .secure(jwtCookieSecure)
+                .path("/")
+                .maxAge(maxAge)
+                .sameSite(jwtCookieSameSite)
+                .build();
+    }
+
+    private String cookieValue(HttpServletRequest request, String name) {
+        if (request.getCookies() == null) {
+            return null;
+        }
+        for (Cookie cookie : request.getCookies()) {
+            if (name.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
     }
 }

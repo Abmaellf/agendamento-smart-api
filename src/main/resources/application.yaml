@@ -53,8 +53,13 @@ api:
   security:
     cookie:
       secure: ${JWT_COOKIE_SECURE:false}
+      same-site: ${JWT_COOKIE_SAME_SITE:Lax}
+      access-name: ${JWT_ACCESS_COOKIE_NAME:jwt}
+      refresh-name: ${JWT_REFRESH_COOKIE_NAME:refresh_token}
     token:
       secret: ${JWT_SECRET}
+      access-ttl: ${JWT_ACCESS_TTL:15m}
+      refresh-ttl: ${JWT_REFRESH_TTL:30d}
 
 
 # ============================================================

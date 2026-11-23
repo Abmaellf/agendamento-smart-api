@@ -9,9 +9,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasItems;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -39,12 +42,47 @@ class AuthenticationCookieIntegrationTest extends PostgresIntegrationTestSupport
                 .andExpect(status().isOk())
                 .andExpect(header().string("Set-Cookie", containsString("Secure")))
                 .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
+                .andExpect(header().stringValues(
+                        "Set-Cookie",
+                        hasItems(containsString("jwt="), containsString("refresh_token="))))
+                .andExpect(jsonPath("$.token").doesNotExist())
                 .andReturn();
 
         var jwtCookie = login.getResponse().getCookie("jwt");
+        var refreshCookie = login.getResponse().getCookie("refresh_token");
 
         mockMvc.perform(get("/auth/me").cookie(jwtCookie))
                 .andExpect(status().isOk());
+
+        var refresh = mockMvc.perform(post("/auth/refresh").cookie(refreshCookie))
+                .andExpect(status().isNoContent())
+                .andExpect(header().stringValues(
+                        "Set-Cookie",
+                        hasItems(containsString("jwt="), containsString("refresh_token="))))
+                .andReturn();
+        var rotatedRefreshCookie = refresh.getResponse().getCookie("refresh_token");
+
+        assertThat(rotatedRefreshCookie).isNotNull();
+        assertThat(rotatedRefreshCookie.getValue()).isNotEqualTo(refreshCookie.getValue());
+
+        mockMvc.perform(post("/auth/refresh").cookie(refreshCookie))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/auth/logout").cookie(rotatedRefreshCookie))
+                .andExpect(status().isNoContent())
+                .andExpect(header().string("Set-Cookie", containsString("Max-Age=0")));
+
+        mockMvc.perform(post("/auth/logout").cookie(rotatedRefreshCookie))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/auth/me").cookie(jwtCookie))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/auth/logout"))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/auth/refresh"))
+                .andExpect(status().isUnauthorized());
     }
 
     private static ClinicRegistrationRequest registrationRequest() {

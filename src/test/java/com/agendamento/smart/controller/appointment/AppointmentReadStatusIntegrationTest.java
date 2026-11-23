@@ -54,6 +54,7 @@ import java.util.concurrent.CompletableFuture;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -109,7 +110,8 @@ class AppointmentReadStatusIntegrationTest extends PostgresIntegrationTestSuppor
 
         performLogin(context)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").isNotEmpty());
+                .andExpect(cookie().exists("jwt"))
+                .andExpect(cookie().exists("refresh_token"));
     }
 
     @ParameterizedTest
@@ -121,7 +123,8 @@ class AppointmentReadStatusIntegrationTest extends PostgresIntegrationTestSuppor
 
         performLogin(context)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").isNotEmpty());
+                .andExpect(cookie().exists("jwt"))
+                .andExpect(cookie().exists("refresh_token"));
     }
 
     @Test

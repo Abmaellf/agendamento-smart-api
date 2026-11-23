@@ -16,6 +16,11 @@ api:
     cookie:
       secure: ${JWT_COOKIE_SECURE:true}
       same-site: ${JWT_COOKIE_SAME_SITE:None}
+      access-name: ${JWT_ACCESS_COOKIE_NAME:jwt}
+      refresh-name: ${JWT_REFRESH_COOKIE_NAME:refresh_token}
+    token:
+      access-ttl: ${JWT_ACCESS_TTL:15m}
+      refresh-ttl: ${JWT_REFRESH_TTL:30d}
 
 logging:
   level:

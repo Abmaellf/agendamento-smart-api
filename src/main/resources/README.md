@@ -22,7 +22,9 @@ Centralizar configuração de runtime e migrations empacotadas no classpath.
 - API na porta 8080.
 - SQL em `DEBUG` somente em `test`, sem registrar valores dos parâmetros; os demais profiles usam níveis seguros.
 - Segredo JWT obrigatório por `JWT_SECRET`, sem fallback no repositório.
-- `JWT_COOKIE_SECURE` controla o atributo `Secure` do cookie JWT; o padrão é `false` fora de produção e `true` no profile `prod`.
+- `JWT_COOKIE_SECURE` controla o atributo `Secure` dos cookies de sessão; o padrão é `false` fora de produção e `true` no profile `prod`.
+- `JWT_COOKIE_SAME_SITE`, `JWT_ACCESS_COOKIE_NAME` e `JWT_REFRESH_COOKIE_NAME` controlam, respectivamente, `SameSite` e os nomes dos cookies `jwt`/`refresh_token`.
+- `JWT_ACCESS_TTL` e `JWT_REFRESH_TTL` controlam as durações padrão de 15 minutos e 30 dias.
 
 ## Dependências internas e externas
 
@@ -52,7 +54,7 @@ Ambiente/Maven -> properties -> autoconfiguração Spring -> datasource/JPA/Flyw
 
 - Configuração é separada por ambiente e não contém credenciais ou segredo funcional no repositório.
 - Datas de agendamento são persistidas com semântica de fuso explícito; o formato definitivo será fechado na entrevista.
-- Logs de produção não exibem SQL com dados pessoais, tokens, CPF/CNPJ, motivos ou payloads sensíveis.
+- Logs de produção não exibem SQL com dados pessoais, tokens, CPF/CNPJ, motivos ou payloads sensíveis; o fluxo de autenticação também não registra segredos.
 - Flyway continua como fonte de verdade do schema; inicialização deve falhar de forma clara diante de migration incompatível.
 - Configurações de segurança de cookie/token devem ser próprias de cada ambiente.
 

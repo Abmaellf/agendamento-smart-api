@@ -21,6 +21,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @EnableMethodSecurity(securedEnabled = true, jsr250Enabled = true)
@@ -42,6 +43,8 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
 //                    .requestMatchers(HttpMethod.GET, "/debug/db").permitAll()
                     .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/refresh").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/logout").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.GET, "/patient/list").hasAnyRole("ADMIN", "USER")
 //                    .requestMatchers(HttpMethod.GET, "/patient/list").hasRole("ADMIN")
@@ -59,7 +62,6 @@ public class SecurityConfiguration {
         // Domínios permitidos
         config.setAllowedOrigins(List.of(
                 "https://agendamentos-smart.vercel.app",
-                "https://agendamentos-smart.vercel.app/*",
                 "http://localhost:3000",
                 "http://localhost:5173"
         ));
