@@ -23,7 +23,6 @@ import com.agendamento.smart.repository.UnitRepository;
 import com.agendamento.smart.repository.UserRepository;
 import com.agendamento.smart.service.ClinicOnboardingService;
 import com.agendamento.smart.service.UnitScopeService;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -252,15 +251,13 @@ class BasicUnitScopeIntegrationTest extends PostgresIntegrationTestSupport {
     }
 
     private String login(String login, String password) throws Exception {
-        String response = mockMvc.perform(post("/auth/login")
+        var response = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(new AuthenticationDTO(login, password))))
                 .andExpect(status().isOk())
                 .andReturn()
-                .getResponse()
-                .getContentAsString();
-        JsonNode body = objectMapper.readTree(response);
-        return body.get("token").asText();
+                .getResponse();
+        return response.getCookie("jwt").getValue();
     }
 
     private Patient patient(Clinic clinic, ClinicUnit unit, String name) {

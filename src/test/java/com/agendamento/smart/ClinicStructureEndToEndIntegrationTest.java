@@ -216,15 +216,14 @@ class ClinicStructureEndToEndIntegrationTest extends PostgresIntegrationTestSupp
     }
 
     private String login(String login) throws Exception {
-        String response = mockMvc.perform(post("/auth/login")
+        var response = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(
                                 new AuthenticationDTO(login, ADMIN_PASSWORD))))
                 .andExpect(status().isOk())
                 .andReturn()
-                .getResponse()
-                .getContentAsString();
-        return objectMapper.readTree(response).get("token").asText();
+                .getResponse();
+        return response.getCookie("jwt").getValue();
     }
 
     private PatientResponseDTO registerPatient(String token, String name, UUID unitId) throws Exception {
@@ -233,7 +232,7 @@ class ClinicStructureEndToEndIntegrationTest extends PostgresIntegrationTestSupp
                         .header("Authorization", bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(request)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();

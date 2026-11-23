@@ -40,6 +40,8 @@ public abstract class PostgresIntegrationTestSupport {
     protected void cleanDatabase() {
         jdbcTemplate.execute("""
                 TRUNCATE TABLE
+                    AUTH_REFRESH_TOKEN,
+                    AUTH_SESSION,
                     PROFESSIONAL_SERVICE,
                     APPOINTMENT,
                     PATIENT_UNIT,
