@@ -11,6 +11,7 @@ Este diretório separa três perspectivas que não devem ser confundidas:
 - [Verificação da estrutura clínica](VERIFICACAO_ESTRUTURA_CLINICA_MATRIZ_VINCULOS.md): comandos e resultados observados em PostgreSQL descartável;
 - [Deploy de produção no Ubuntu com Docker](DEPLOY_PRODUCAO_DOCKER_UBUNTU.md): preparação do servidor, `.env`, deploy, validação, backup e atualização;
 - [Guia de deploy e integração com o front-end](GUIA_DEPLOY_E_INTEGRACAO_FRONTEND.md): procedimento baseado no Compose atual, variáveis corretas, atualização dos contêineres e validação CORS/JWT com o front publicado;
+- [Especificação e registro do proxy reverso HTTPS](REGISTRO_PROXY_REVERSO_HTTPS.md): consolidação da change OpenSpec, implementação Docker, validações e atualizações posteriores;
 - [Requisitos do MVP](REQUISITOS_DO_MVP.md): comportamento confirmado para a evolução do produto e da API;
 - [Entrevista de descoberta](ENTREVISTA_DE_DESCOBERTA.md): decisões ainda abertas e respostas que deverão atualizar os requisitos.
 
