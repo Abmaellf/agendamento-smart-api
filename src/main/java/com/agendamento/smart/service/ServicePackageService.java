@@ -30,6 +30,7 @@ public class ServicePackageService {
     private final UnitRepository unitRepository;
     private final ServiceOfferingRepository serviceRepository;
     private final ServicePackageUsageService usageService;
+    private final UnitScopeService unitScopeService;
 
     @Transactional
     public ServicePackageResponse create(User user, ServicePackageRequest request) {
@@ -43,12 +44,24 @@ public class ServicePackageService {
 
     @Transactional(readOnly = true)
     public List<ServicePackageResponse> findAll(User user, UUID unitId, UUID serviceId, Boolean active, Integer totalSessions, String name) {
-        requireAdmin(user);
+        if (user.getRole() != UserRole.ADMIN) {
+            UUID allowedUnitId = unitScopeService.requireSingleAllowedUnitId(user);
+            if (unitId != null && !unitId.equals(allowedUnitId)) {
+                throw DomainException.tenantResourceNotFound();
+            }
+            unitId = allowedUnitId;
+            active = true;
+        } else if (unitId != null) {
+            unitRepository.findByIdAndClinicId(unitId, user.getClinic().getId())
+                    .orElseThrow(this::packageNotFound);
+        }
+        UUID requestedUnitId = unitId;
+        Boolean requestedActive = active;
         Stream<ServicePackageDefinition> packages = packageRepository
                 .findAllByClinicIdOrderByNameAsc(user.getClinic().getId()).stream();
-        if (unitId != null) packages = packages.filter(item -> item.getUnit().getId().equals(unitId));
+        if (requestedUnitId != null) packages = packages.filter(item -> item.getUnit().getId().equals(requestedUnitId));
         if (serviceId != null) packages = packages.filter(item -> item.getService().getId().equals(serviceId));
-        if (active != null) packages = packages.filter(item -> item.isActive() == active);
+        if (requestedActive != null) packages = packages.filter(item -> item.isActive() == requestedActive);
         if (totalSessions != null) packages = packages.filter(item -> item.getTotalSessions().equals(totalSessions));
         if (name != null && !name.isBlank()) {
             String normalized = name.trim().toLowerCase();

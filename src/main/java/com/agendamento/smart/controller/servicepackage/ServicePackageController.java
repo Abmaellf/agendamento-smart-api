@@ -19,11 +19,11 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/service-packages")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
 public class ServicePackageController {
     private final ServicePackageService service;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ServicePackageResponse> create(@AuthenticationPrincipal User user, @Valid @RequestBody ServicePackageRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(user, request));
     }
@@ -37,16 +37,19 @@ public class ServicePackageController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ServicePackageResponse> findById(@AuthenticationPrincipal User user, @PathVariable UUID id) {
         return ResponseEntity.ok(service.findById(user, id));
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ServicePackageResponse> update(@AuthenticationPrincipal User user, @PathVariable UUID id, @Valid @RequestBody ServicePackageRequest request) {
         return ResponseEntity.ok(service.update(user, id, request));
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ServicePackageResponse> updateStatus(@AuthenticationPrincipal User user, @PathVariable UUID id, @Valid @RequestBody ServicePackageStatusRequest request) {
         return ResponseEntity.ok(service.updateStatus(user, id, request.active()));
     }
