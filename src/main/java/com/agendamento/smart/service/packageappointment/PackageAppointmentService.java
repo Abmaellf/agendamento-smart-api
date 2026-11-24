@@ -12,6 +12,7 @@ import com.agendamento.smart.repository.PackageAppointmentContractRepository;
 import com.agendamento.smart.repository.ServicePackageRepository;
 import com.agendamento.smart.repository.PatientRepository;
 import com.agendamento.smart.service.appointment.AppointmentService;
+import com.agendamento.smart.service.UnitScopeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,11 +30,13 @@ public class PackageAppointmentService {
     private final PackageAppointmentContractRepository contractRepository;
     private final AppointmentService appointmentService;
     private final PatientRepository patientRepository;
+    private final UnitScopeService unitScopeService;
 
     @Transactional(readOnly = true)
     public PackageAppointmentPreviewResponse preview(PackageAppointmentRequest request, User user) {
-        ServicePackageDefinition definition = findPackage(request.packageId(), user);
-        validatePatient(request.patientId(), definition);
+        requireUnitScope(user, request.unitId());
+        ServicePackageDefinition definition = findPackage(request.packageId(), request.unitId(), user);
+        validatePatient(request.patientId(), definition, request.unitId());
         List<PackageAppointmentSession> sessions = sessions(definition, request);
         return response(definition, request, sessions);
     }
@@ -46,7 +49,7 @@ public class PackageAppointmentService {
         if (existing.isPresent()) return new PackageAppointmentConfirmationResponse(existing.get().getId(), List.of(), preview(request, user));
         PackageAppointmentPreviewResponse preview = preview(request, user);
         if (fingerprint != null && !fingerprint.equals(preview.fingerprint())) throw new DomainException("STALE_PACKAGE_PREVIEW", "A prévia do pacote está desatualizada.", HttpStatus.CONFLICT);
-        ServicePackageDefinition definition = findPackage(request.packageId(), user);
+        ServicePackageDefinition definition = findPackage(request.packageId(), request.unitId(), user);
         PackageAppointmentContract contract = new PackageAppointmentContract();
         contract.setClinic(user.getClinic()); contract.setPackageDefinition(definition); contract.setPatient(patientRepository.findByIdAndClinicIdWithUnits(request.patientId(), user.getClinic().getId()).orElseThrow(DomainException::tenantResourceNotFound));
         contract.setUnit(definition.getUnit()); contract.setService(definition.getService()); contract.setCreatedBy(user); contract.setTotalSessions(definition.getTotalSessions()); contract.setTotalPrice(definition.getTotalPrice()); contract.setRequestedStartDate(request.startDate()); contract.setAppointmentTime(request.time()); contract.setEffectiveFirstDate(preview.firstDate()); contract.setEffectiveLastDate(preview.lastDate()); contract.setEffectiveWeekDays(new LinkedHashSet<>(request.effectiveWeekDays())); contract.setIdempotencyKey(key);
@@ -63,13 +66,31 @@ public class PackageAppointmentService {
     @Transactional(readOnly = true)
     public PackageAppointmentConfirmationResponse findById(UUID id, User user) {
         var c = contractRepository.findByIdAndClinicId(id, user.getClinic().getId()).orElseThrow(DomainException::tenantResourceNotFound);
+        requireUnitScope(user, c.getUnit().getId());
         return new PackageAppointmentConfirmationResponse(c.getId(), List.of(), null);
     }
 
-    private ServicePackageDefinition findPackage(UUID id, User user) { return packageRepository.findByIdAndClinicId(id, user.getClinic().getId()).filter(ServicePackageDefinition::isActive).orElseThrow(DomainException::tenantResourceNotFound); }
-    private void validatePatient(UUID patientId, ServicePackageDefinition definition) { patientRepository.findByIdAndClinicIdWithUnits(patientId, definition.getClinic().getId()).orElseThrow(DomainException::tenantResourceNotFound); }
+    private ServicePackageDefinition findPackage(UUID id, UUID unitId, User user) {
+        return packageRepository.findByIdAndClinicId(id, user.getClinic().getId())
+                .filter(ServicePackageDefinition::isActive)
+                .filter(definition -> definition.getUnit().getId().equals(unitId))
+                .orElseThrow(DomainException::tenantResourceNotFound);
+    }
+
+    private void validatePatient(UUID patientId, ServicePackageDefinition definition, UUID unitId) {
+        patientRepository.findByIdAndClinicIdWithUnits(patientId, definition.getClinic().getId())
+                .filter(patient -> patient.getUnits().stream().anyMatch(unit -> unit.getId().equals(unitId)))
+                .orElseThrow(DomainException::tenantResourceNotFound);
+    }
+
+    private void requireUnitScope(User user, UUID unitId) {
+        if (unitId == null || unitScopeService.allowedUnits(user).stream()
+                .noneMatch(unit -> unit.getId().equals(unitId))) {
+            throw DomainException.tenantResourceNotFound();
+        }
+    }
     private List<PackageAppointmentSession> sessions(ServicePackageDefinition definition, PackageAppointmentRequest request) { ZoneId zone = ZoneId.of(definition.getUnit().getTimeZone()); Set<DayOfWeek> days = request.effectiveWeekDays().stream().map(this::day).collect(java.util.stream.Collectors.toSet()); List<PackageAppointmentSession> result = new ArrayList<>(); LocalDate date = request.startDate(); while (result.size() < definition.getTotalSessions()) { if (days.contains(date.getDayOfWeek())) { ZonedDateTime z = ZonedDateTime.of(date, request.time(), zone); result.add(new PackageAppointmentSession(result.size()+1, date, request.time(), z.toInstant())); } date = date.plusDays(1); } return result; }
     private PackageAppointmentPreviewResponse response(ServicePackageDefinition d, PackageAppointmentRequest r, List<PackageAppointmentSession> s) { return new PackageAppointmentPreviewResponse(d.getId(), r.patientId(), d.getUnit().getId(), d.getTotalPrice(), s.get(0).date(), s.get(s.size()-1).date(), s, fingerprint(d,r,s)); }
-    private String fingerprint(ServicePackageDefinition d, PackageAppointmentRequest r, List<PackageAppointmentSession> s) { try { var md=MessageDigest.getInstance("SHA-256"); return HexFormat.of().formatHex(md.digest((d.getId()+"|"+r.patientId()+"|"+r.startDate()+"|"+r.time()+"|"+r.effectiveWeekDays()+"|"+s.size()).getBytes(StandardCharsets.UTF_8))); } catch(Exception e) { throw new IllegalStateException(e); } }
+    private String fingerprint(ServicePackageDefinition d, PackageAppointmentRequest r, List<PackageAppointmentSession> s) { try { var md=MessageDigest.getInstance("SHA-256"); return HexFormat.of().formatHex(md.digest((d.getId()+"|"+r.patientId()+"|"+r.unitId()+"|"+r.startDate()+"|"+r.time()+"|"+r.effectiveWeekDays()+"|"+s.size()).getBytes(StandardCharsets.UTF_8))); } catch(Exception e) { throw new IllegalStateException(e); } }
     private DayOfWeek day(PackageWeekDay d) { return DayOfWeek.valueOf(d.name()); }
 }

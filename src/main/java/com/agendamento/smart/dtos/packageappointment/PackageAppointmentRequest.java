@@ -8,4 +8,11 @@ import java.time.LocalTime;
 import java.util.Set;
 import java.util.UUID;
 
-public record PackageAppointmentRequest(@NotNull UUID packageId, @NotNull UUID patientId, @NotNull LocalDate startDate, @NotNull LocalTime time, UUID professionalId, @NotEmpty Set<PackageWeekDay> effectiveWeekDays) {}
+public record PackageAppointmentRequest(
+        @NotNull UUID packageId,
+        @NotNull UUID patientId,
+        @NotNull UUID unitId,
+        @NotNull LocalDate startDate,
+        @NotNull LocalTime time,
+        UUID professionalId,
+        @NotEmpty Set<PackageWeekDay> effectiveWeekDays) {}

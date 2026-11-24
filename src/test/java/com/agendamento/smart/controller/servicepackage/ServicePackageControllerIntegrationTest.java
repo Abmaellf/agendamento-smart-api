@@ -106,6 +106,20 @@ class ServicePackageControllerIntegrationTest extends PostgresIntegrationTestSup
 
         mockMvc.perform(get("/api/service-packages")
                         .header("Authorization", bearer(owner.attendant())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].id").value(packageId));
+
+        mockMvc.perform(get("/api/service-packages")
+                        .header("Authorization", bearer(owner.attendant()))
+                        .param("unitId", anotherClinic.unit().getId().toString()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TENANT_RESOURCE_NOT_FOUND"));
+
+        mockMvc.perform(post("/api/service-packages")
+                        .header("Authorization", bearer(owner.attendant()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsBytes(request(owner, "Pacote BASIC", List.of("MONDAY")))))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(get("/api/service-packages/{id}", packageId)

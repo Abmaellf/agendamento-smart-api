@@ -3,6 +3,7 @@ package com.agendamento.smart.service;
 import com.agendamento.smart.controller.exception.DomainException;
 import com.agendamento.smart.dtos.servicepackage.ServicePackageRequest;
 import com.agendamento.smart.model.clinic.Clinic;
+import com.agendamento.smart.model.unit.ClinicUnit;
 import com.agendamento.smart.model.servicepackage.PackageWeekDay;
 import com.agendamento.smart.model.servicepackage.ServicePackageDefinition;
 import com.agendamento.smart.model.user.User;
@@ -34,6 +35,7 @@ class ServicePackageServiceTest {
     @Mock private UnitRepository unitRepository;
     @Mock private ServiceOfferingRepository serviceRepository;
     @Mock private ServicePackageUsageService usageService;
+    @Mock private UnitScopeService unitScopeService;
     @InjectMocks private ServicePackageService service;
 
     @Test
@@ -63,6 +65,35 @@ class ServicePackageServiceTest {
                     assertThat(exception.getStatus().value()).isEqualTo(409);
                 });
         verify(packageRepository, never()).saveAndFlush(definition);
+    }
+
+    @Test
+    void basicListingRejectsAUnitOutsideItsSessionScope() {
+        Clinic clinic = Clinic.builder().id(UUID.randomUUID()).name("Clínica").build();
+        ClinicUnit ownUnit = unit(clinic, "Matriz");
+        ClinicUnit foreignUnit = unit(clinic, "Filial");
+        User basic = User.builder()
+                .clinic(clinic)
+                .clinicUnit(ownUnit)
+                .role(UserRole.USER)
+                .build();
+        when(unitScopeService.requireSingleAllowedUnitId(basic)).thenReturn(ownUnit.getId());
+
+        assertThatThrownBy(() -> service.findAll(
+                basic, foreignUnit.getId(), null, true, null, null))
+                .isInstanceOfSatisfying(DomainException.class,
+                        exception -> assertThat(exception.getCode()).isEqualTo("TENANT_RESOURCE_NOT_FOUND"));
+        verify(packageRepository, never()).findAllByClinicIdOrderByNameAsc(clinic.getId());
+    }
+
+    private ClinicUnit unit(Clinic clinic, String name) {
+        ClinicUnit unit = new ClinicUnit();
+        unit.setId(UUID.randomUUID());
+        unit.setClinic(clinic);
+        unit.setTenantId(clinic.getId());
+        unit.setName(name);
+        unit.setTimeZone("America/Cuiaba");
+        return unit;
     }
 
     private User admin() {
