@@ -2,7 +2,7 @@
 
 A clínica é sempre derivada do principal autenticado. A leitura do catálogo é operacional e pode ser feita por qualquer usuário autenticado; a gestão da definição permanece exclusiva de `ROLE_ADMIN`:
 
-- `GET /api/service-packages` lista com filtros opcionais `unitId`, `serviceId`, `active`, `totalSessions` e `name`. Para `USER`, a resposta é limitada aos pacotes ativos da unidade associada à sessão; uma unidade externa retorna `TENANT_RESOURCE_NOT_FOUND`;
+- `GET /api/service-packages` lista com filtros opcionais `unitId`, `serviceId`, `active`, `totalSessions` e `name`, além de `page` (zero-based, padrão `0`) e `size` (padrão `10`, máximo `100`). A resposta contém `content`, `page`, `size`, `totalElements`, `totalPages` e `last`, ordenada por nome ascendente. Para `USER`, a resposta é limitada aos pacotes ativos da unidade associada à sessão; uma unidade externa retorna `TENANT_RESOURCE_NOT_FOUND`;
 - `POST /api/service-packages` cria uma definição (`ROLE_ADMIN`);
 - `GET /api/service-packages/{id}` consulta uma definição (`ROLE_ADMIN`);
 - `PATCH /api/service-packages/{id}` atualiza a definição (`ROLE_ADMIN`);

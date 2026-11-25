@@ -128,6 +128,65 @@ class ServicePackageControllerIntegrationTest extends PostgresIntegrationTestSup
                 .andExpect(jsonPath("$.code").value("PACKAGE_NOT_FOUND"));
     }
 
+    @Test
+    void paginatesFiltersAndValidatesPackageListingParameters() throws Exception {
+        Context context = context("pagination");
+        create(context, "A Pacote", List.of("MONDAY"));
+        create(context, "B Pacote", List.of("WEDNESDAY"));
+
+        mockMvc.perform(get("/api/service-packages")
+                        .header("Authorization", bearer(context.admin()))
+                        .param("page", "0")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].name").value("A Pacote"))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(1))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.last").value(false));
+
+        mockMvc.perform(get("/api/service-packages")
+                        .header("Authorization", bearer(context.admin()))
+                        .param("page", "1")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].name").value("B Pacote"))
+                .andExpect(jsonPath("$.last").value(true));
+
+        mockMvc.perform(get("/api/service-packages")
+                        .header("Authorization", bearer(context.admin()))
+                        .param("name", "b pacote")
+                        .param("active", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].name").value("B Pacote"))
+                .andExpect(jsonPath("$.totalElements").value(1));
+
+        mockMvc.perform(get("/api/service-packages")
+                        .header("Authorization", bearer(context.admin()))
+                        .param("name", "inexistente"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(0)))
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0))
+                .andExpect(jsonPath("$.last").value(true));
+
+        mockMvc.perform(get("/api/service-packages")
+                        .header("Authorization", bearer(context.admin()))
+                        .param("page", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PACKAGE_PAGINATION_ERROR"));
+
+        mockMvc.perform(get("/api/service-packages")
+                        .header("Authorization", bearer(context.admin()))
+                        .param("size", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PACKAGE_PAGINATION_ERROR"));
+    }
+
     private String create(Context context, String name, List<String> weekDays) throws Exception {
         String body = mockMvc.perform(post("/api/service-packages")
                         .header("Authorization", bearer(context.admin()))

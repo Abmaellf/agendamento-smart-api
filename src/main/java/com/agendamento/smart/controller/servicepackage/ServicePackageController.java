@@ -1,6 +1,6 @@
 package com.agendamento.smart.controller.servicepackage;
 
-import com.agendamento.smart.dtos.catalog.CatalogResponse;
+import com.agendamento.smart.dtos.PageResponseDTO;
 import com.agendamento.smart.dtos.servicepackage.ServicePackageRequest;
 import com.agendamento.smart.dtos.servicepackage.ServicePackageResponse;
 import com.agendamento.smart.dtos.servicepackage.ServicePackageStatusRequest;
@@ -29,11 +29,13 @@ public class ServicePackageController {
     }
 
     @GetMapping
-    public CatalogResponse<ServicePackageResponse> findAll(@AuthenticationPrincipal User user,
+    public PageResponseDTO<ServicePackageResponse> findAll(@AuthenticationPrincipal User user,
             @RequestParam(required = false) UUID unitId, @RequestParam(required = false) UUID serviceId,
             @RequestParam(required = false) Boolean active, @RequestParam(required = false) Integer totalSessions,
-            @RequestParam(required = false) String name) {
-        return new CatalogResponse<>(service.findAll(user, unitId, serviceId, active, totalSessions, name));
+            @RequestParam(required = false) String name,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return service.findAll(user, unitId, serviceId, active, totalSessions, name, page, size);
     }
 
     @GetMapping("/{id}")

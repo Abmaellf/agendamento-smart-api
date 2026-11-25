@@ -1,6 +1,7 @@
 package com.agendamento.smart.service;
 
 import com.agendamento.smart.controller.exception.DomainException;
+import com.agendamento.smart.dtos.PageResponseDTO;
 import com.agendamento.smart.dtos.servicepackage.ServicePackageRequest;
 import com.agendamento.smart.dtos.servicepackage.ServicePackageResponse;
 import com.agendamento.smart.model.serviceoffering.ServiceOffering;
@@ -13,6 +14,9 @@ import com.agendamento.smart.repository.ServiceOfferingRepository;
 import com.agendamento.smart.repository.ServicePackageRepository;
 import com.agendamento.smart.repository.UnitRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +25,6 @@ import java.math.RoundingMode;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -43,7 +46,9 @@ public class ServicePackageService {
     }
 
     @Transactional(readOnly = true)
-    public List<ServicePackageResponse> findAll(User user, UUID unitId, UUID serviceId, Boolean active, Integer totalSessions, String name) {
+    public PageResponseDTO<ServicePackageResponse> findAll(User user, UUID unitId, UUID serviceId, Boolean active,
+            Integer totalSessions, String name, int page, int size) {
+        validatePagination(page, size);
         if (user.getRole() != UserRole.ADMIN) {
             UUID allowedUnitId = unitScopeService.requireSingleAllowedUnitId(user);
             if (unitId != null && !unitId.equals(allowedUnitId)) {
@@ -55,19 +60,20 @@ public class ServicePackageService {
             unitRepository.findByIdAndClinicId(unitId, user.getClinic().getId())
                     .orElseThrow(this::packageNotFound);
         }
-        UUID requestedUnitId = unitId;
-        Boolean requestedActive = active;
-        Stream<ServicePackageDefinition> packages = packageRepository
-                .findAllByClinicIdOrderByNameAsc(user.getClinic().getId()).stream();
-        if (requestedUnitId != null) packages = packages.filter(item -> item.getUnit().getId().equals(requestedUnitId));
-        if (serviceId != null) packages = packages.filter(item -> item.getService().getId().equals(serviceId));
-        if (requestedActive != null) packages = packages.filter(item -> item.isActive() == requestedActive);
-        if (totalSessions != null) packages = packages.filter(item -> item.getTotalSessions().equals(totalSessions));
-        if (name != null && !name.isBlank()) {
-            String normalized = name.trim().toLowerCase();
-            packages = packages.filter(item -> item.getName().toLowerCase().contains(normalized));
+        String normalizedName = name == null || name.isBlank() ? null : name.trim();
+        Page<ServicePackageDefinition> packages = packageRepository.findPageByClinicIdAndFilters(
+                user.getClinic().getId(), unitId, serviceId, active, totalSessions, normalizedName,
+                PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "name")));
+        return PageResponseDTO.from(packages.map(this::toResponse));
+    }
+
+    private void validatePagination(int page, int size) {
+        if (page < 0 || size < 1 || size > 100) {
+            throw new DomainException(
+                    "PACKAGE_PAGINATION_ERROR",
+                    "Os parâmetros page e size são inválidos.",
+                    HttpStatus.BAD_REQUEST);
         }
-        return packages.map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
