@@ -13,6 +13,7 @@ import com.agendamento.smart.repository.ServicePackageRepository;
 import com.agendamento.smart.repository.UnitRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.data.domain.Page;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -80,10 +81,60 @@ class ServicePackageServiceTest {
         when(unitScopeService.requireSingleAllowedUnitId(basic)).thenReturn(ownUnit.getId());
 
         assertThatThrownBy(() -> service.findAll(
-                basic, foreignUnit.getId(), null, true, null, null))
+                basic, foreignUnit.getId(), null, true, null, null, 0, 10))
                 .isInstanceOfSatisfying(DomainException.class,
                         exception -> assertThat(exception.getCode()).isEqualTo("TENANT_RESOURCE_NOT_FOUND"));
-        verify(packageRepository, never()).findAllByClinicIdOrderByNameAsc(clinic.getId());
+        verify(packageRepository, never()).findPageByClinicIdAndFilters(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void rejectsInvalidPaginationBeforeQueryingPackages() {
+        User admin = admin();
+
+        assertThatThrownBy(() -> service.findAll(admin, null, null, null, null, null, -1, 10))
+                .isInstanceOfSatisfying(DomainException.class, exception -> {
+                    assertThat(exception.getCode()).isEqualTo("PACKAGE_PAGINATION_ERROR");
+                    assertThat(exception.getStatus().value()).isEqualTo(400);
+                });
+        assertThatThrownBy(() -> service.findAll(admin, null, null, null, null, null, 0, 101))
+                .isInstanceOf(DomainException.class);
+        verify(packageRepository, never()).findPageByClinicIdAndFilters(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void basicListingForcesAuthorizedUnitAndActiveFilterBeforePageQuery() {
+        Clinic clinic = Clinic.builder().id(UUID.randomUUID()).name("Clínica").build();
+        ClinicUnit ownUnit = unit(clinic, "Matriz");
+        User basic = User.builder().clinic(clinic).clinicUnit(ownUnit).role(UserRole.USER).build();
+        when(unitScopeService.requireSingleAllowedUnitId(basic)).thenReturn(ownUnit.getId());
+        when(packageRepository.findPageByClinicIdAndFilters(
+                org.mockito.ArgumentMatchers.eq(clinic.getId()),
+                org.mockito.ArgumentMatchers.eq(ownUnit.getId()),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(true),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(Page.empty());
+
+        service.findAll(basic, null, null, false, null, " ", 0, 10);
+
+        verify(packageRepository).findPageByClinicIdAndFilters(
+                org.mockito.ArgumentMatchers.eq(clinic.getId()),
+                org.mockito.ArgumentMatchers.eq(ownUnit.getId()),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(true),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.any());
     }
 
     private ClinicUnit unit(Clinic clinic, String name) {
