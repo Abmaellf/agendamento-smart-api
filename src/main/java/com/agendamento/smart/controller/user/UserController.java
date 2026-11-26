@@ -22,7 +22,12 @@ public class UserController {
 
     private final UserRegistrationService userRegistrationService;
 
-    @CrossOrigin(origins = "https://agendamentos-smart.vercel.app")
+    @CrossOrigin(origins = {
+            "https://agendamentos-smart.vercel.app",
+            "https://compromiz.com.br",
+            "http://localhost:3000",
+            "http://localhost:5173"
+    })
     @PostMapping("/register/{clinicId}")
     public ResponseEntity<Void> createUser(
             @PathVariable UUID clinicId,

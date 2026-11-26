@@ -62,6 +62,7 @@ public class SecurityConfiguration {
         // Domínios permitidos
         config.setAllowedOrigins(List.of(
                 "https://agendamentos-smart.vercel.app",
+                "https://compromiz.com.br",
                 "http://localhost:3000",
                 "http://localhost:5173"
         ));
