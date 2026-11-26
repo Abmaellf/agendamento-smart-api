@@ -30,6 +30,7 @@ import java.util.UUID;
 
 @CrossOrigin(origins = {
         "https://agendamentos-smart.vercel.app",
+        "https://compromiz.com.br",
         "http://localhost:3000",
         "http://localhost:5173"
 })

@@ -2,10 +2,11 @@
 
 Este documento descreve o procedimento baseado no código atual deste
 repositório para publicar novas versões da API no Ubuntu e validar a
-comunicação com o front-end em:
+comunicação com o front-end em uma das origens públicas autorizadas:
 
 ~~~text
 https://agendamentos-smart.vercel.app/sign-in
+https://compromiz.com.br
 ~~~
 
 O servidor informado possui atualmente a API em
@@ -28,10 +29,10 @@ Há três condições importantes para o front funcionar em produção:
 2. O login grava um cookie JWT HTTP-only e também devolve o token no corpo da
    resposta. O front deve usar credentials: "include" quando depender do
    cookie, ou enviar Authorization: Bearer <token> nas chamadas seguintes.
-3. O CORS já inclui exatamente https://agendamentos-smart.vercel.app e
-   allowCredentials=true. A origem adicional com /* é inválida como origem
-   CORS e deve ser removida em uma correção futura; ela não invalida a origem
-   exata que já está configurada.
+3. O CORS inclui exatamente https://agendamentos-smart.vercel.app e
+   https://compromiz.com.br, além dos hosts locais, com
+   allowCredentials=true. A origem deve ser enviada sem barra final e sem
+   /*, pois padrões de caminho não são origens CORS válidas.
 
 Não foi possível acessar o IP ou o domínio Vercel a partir deste ambiente de
 execução. Os smoke tests abaixo são, portanto, os procedimentos para confirmar
@@ -342,8 +343,9 @@ Teste o preflight CORS contra a URL HTTPS do proxy, não contra o IP HTTP:
 
 ~~~bash
 export API_BASE_URL=https://api.seu-dominio.com
+export FRONTEND_ORIGIN=https://compromiz.com.br
 curl -i -X OPTIONS "$API_BASE_URL/auth/login" \
-  -H 'Origin: https://agendamentos-smart.vercel.app' \
+  -H "Origin: $FRONTEND_ORIGIN" \
   -H 'Access-Control-Request-Method: POST' \
   -H 'Access-Control-Request-Headers: content-type'
 ~~~
@@ -351,7 +353,7 @@ curl -i -X OPTIONS "$API_BASE_URL/auth/login" \
 A resposta deve conter:
 
 ~~~text
-Access-Control-Allow-Origin: https://agendamentos-smart.vercel.app
+Access-Control-Allow-Origin: https://compromiz.com.br
 Access-Control-Allow-Credentials: true
 ~~~
 
@@ -363,11 +365,11 @@ read -r LOGIN
 read -r -s PASSWORD; echo
 curl -i -c /tmp/agendamento-smart.cookies \
   -H 'Content-Type: application/json' \
-  -H 'Origin: https://agendamentos-smart.vercel.app' \
+  -H "Origin: $FRONTEND_ORIGIN" \
   --data "{\"login\":\"$LOGIN\",\"password\":\"$PASSWORD\"}" \
   "$API_BASE_URL/auth/login"
 curl -i -b /tmp/agendamento-smart.cookies \
-  -H 'Origin: https://agendamentos-smart.vercel.app' \
+  -H "Origin: $FRONTEND_ORIGIN" \
   "$API_BASE_URL/auth/me"
 rm -f /tmp/agendamento-smart.cookies
 ~~~
@@ -415,8 +417,8 @@ divergências.
 
 - manter o proxy reverso HTTPS ativo e deixar API/PostgreSQL acessíveis somente
   na rede interna;
-- remover a origem CORS inválida
-  https://agendamentos-smart.vercel.app/*;
+- não cadastrar origens CORS com barra final ou com o padrão de caminho
+  `https://agendamentos-smart.vercel.app/*`;
 - confirmar se a estratégia final será cookie cross-site ou Bearer. O cookie
   atual usa SameSite=Lax, e cookies cross-site normalmente exigem política
   compatível com HTTPS e SameSite=None;
